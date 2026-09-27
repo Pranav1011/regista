@@ -63,30 +63,37 @@ reproducible (`eval/pass_detection.py --version v1|v2`, parameters in
 ## ADR-004: Template labels are noisy at 5-minute windows; role groups and sides are the output
 
 **Context.** Formations are detected per team, phase, and 5-minute window by
-matching the 10 outfield players' mean shape to seven templates. With no
-formation ground truth, stability is measured without labels, and roles are
-checked against SkillCorner's listed positions (`eval/formations_eval.py`).
+matching the 10 outfield players' mean shape to seven templates. There is no
+formation ground truth, so stability is measured without labels, and roles are
+checked against SkillCorner's listed positions on all 20 open matches
+(16,580 player-windows; `eval/formations_eval.py`). Every method below is
+scored on the same player-windows. Confidence intervals come from resampling
+matches (2,000 resamples), since windows within a match are not independent.
 
-- The exact template label repeats in consecutive windows only 26-63% of the
-  time per Metrica team and phase (median 0.50 on SkillCorner). The back-line
-  count is steadier: median 0.684 in possession and 0.800 out of possession on
-  SkillCorner, and 0.37-1.00 per Metrica team and phase.
-- Players keep their position group (DEF / MID / FWD) in 86-100% of windows
-  (Metrica medians) but their exact role in only 40-76%.
-- Against listed positions, template groups agree 0.731 (strict) and 0.868
-  (wingers count as MID or FWD), barely above a depth-rank baseline (4 deepest
-  DEF, next 4 MID, 2 highest FWD) at 0.724 and 0.855; out of possession the
-  baseline is slightly better. Template sides agree 0.819, well above a
-  width-thirds baseline at 0.685.
+- **Groups (DEF / MID / FWD): templates about tie a depth-rank baseline** (4
+  deepest DEF, next 4 MID, 2 highest FWD). Strict agreement is 0.731 vs 0.724,
+  a difference of +0.007 (95% CI -0.006 to +0.020); with wingers allowed as MID
+  or FWD it is 0.868 vs 0.855, +0.013 (CI +0.001 to +0.026). Out of possession
+  the baseline is slightly ahead.
+- **Templates add value on midfield roles and sides.** For players listed as
+  midfielders, templates agree 0.889 vs 0.764 for depth rank, +0.125 (CI +0.104
+  to +0.148); depth rank is better for listed forwards (0.537 vs 0.450 strict).
+  Template sides (left / centre / right) agree 0.819 vs 0.685 for splitting the
+  width into thirds, +0.133 (CI +0.106 to +0.160).
+- **Exact labels are unstable.** The template label repeats in consecutive
+  windows only 26-63% of the time per Metrica team and phase (median 0.50 on
+  SkillCorner). The back-line count holds better: median 0.684 in possession
+  and 0.800 out of possession on SkillCorner. Players keep their position group
+  in 86-100% of windows (Metrica medians) but their exact role in only 40-76%.
 
 **Decision.** Treat role groups and sides as the trusted output. Show template
-labels only with their margin to the runner-up (the primary ambiguity signal)
-and never as a certainty. `relative_margin` (margin / runner-up cost) is not a
-probability and must not be presented as one.
+labels only with their margin to the runner-up, the primary ambiguity signal.
+Keep `relative_margin` (margin divided by the runner-up cost) as a secondary
+number; it is not a probability and must never be presented as one.
 
-**Consequence.** Group assignment by templates adds little over depth ranking;
-their value is in side (left / centre / right) and midfield structure. Anything
-downstream that needs a formation should work from persistent group-level
+**Consequence.** For DEF / MID / FWD alone, depth ranking is as good and far
+simpler; the templates earn their place through sides and midfield structure.
+Anything downstream that needs a formation works from persistent group-level
 structure, not a single window's label.
 
 ### Phase 2 note: formation-change alerts
@@ -94,6 +101,7 @@ structure, not a single window's label.
 Alerts must be driven by persistent group-level changes, such as the back line
 going from four to five, held over consecutive windows. They must not be driven
 by raw template flips: the exact label changes in about half of consecutive
-windows (label stability median 0.50 on SkillCorner), while the
-back line holds far more often (0.684 in possession, 0.800 out of possession, on
-SkillCorner). An alert on every template flip would be mostly noise.
+windows (label stability median 0.50 on SkillCorner). Back-line alerts use
+out-of-possession windows only, where the back-line count is stable in 0.800 of
+consecutive windows against 0.684 in possession. An alert on every template flip
+would be mostly noise.

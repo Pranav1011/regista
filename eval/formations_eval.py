@@ -79,6 +79,8 @@ def role_side(role: str) -> str:
 WINDOW_KEYS = ["match_id", "period", "team", "phase", "window"]
 METHODS = ("template", "depth")  # group methods; side: template vs thirds
 SIDE_OUTLIER = 0.5  # a flipped half would score near 0; chance level is about 1/3
+FULL_MATCH_PRESENCE = 0.95  # "played the full match": tracked in this share of each half
+BOOTSTRAP_RESAMPLES = 2000
 
 
 def depth_baseline(shapes: pd.DataFrame) -> pd.Series:
@@ -103,6 +105,7 @@ def match_roles(match_id: str, params: dict) -> tuple[pd.DataFrame, pd.DataFrame
     so every method is scored on identical rows.
     """
     frames, players = skillcorner_match(match_id)
+    full_match = full_match_players(frames)
     shapes = window_shapes(frames, possession_phase(frames, params), WINDOW_S, WINDOW_S)
     formations, roles = detect_formations(shapes)
     shapes = shapes.merge(roles[[*WINDOW_KEYS, "player_id", "role", "group"]],
@@ -124,7 +127,40 @@ def match_roles(match_id: str, params: dict) -> tuple[pd.DataFrame, pd.DataFrame
     for method in ("template", "thirds"):
         ok = joined[f"side_{method}"] == joined["listed_side"]
         joined[f"side_{method}_ok"] = ok.where(joined["listed_side"].notna())
+    joined["full_match"] = joined["player_id"].isin(full_match)
     return formations, joined
+
+
+def full_match_players(frames: pd.DataFrame) -> set[str]:
+    """Players tracked in at least ``FULL_MATCH_PRESENCE`` of the frames of every period."""
+    players = frames[frames["team"] != "ball"]
+    per_period = players.groupby("period")["frame"].nunique()
+    seen = players.groupby(["player_id", "period"])["frame"].nunique().unstack("period")
+    share = seen.div(per_period, axis=1).fillna(0.0)
+    return set(share.index[(share >= FULL_MATCH_PRESENCE).all(axis=1)])
+
+
+def match_bootstrap(
+    roles: pd.DataFrame, col_a: str, col_b: str, seed: int = 0
+) -> tuple[float, float, float]:
+    """Pooled agreement difference (a - b) and a 95% CI from resampling matches.
+
+    Rows where either column is NA are dropped. Matches are the resampling unit,
+    because player-windows within a match are not independent.
+    """
+    df = roles[[col_a, col_b, "match_id"]].dropna()
+    per_match = df.groupby("match_id").agg(
+        a=(col_a, lambda s: s.astype(bool).sum()),
+        b=(col_b, lambda s: s.astype(bool).sum()),
+        n=(col_a, "size"),
+    )
+    a, b, n = (per_match[c].to_numpy(dtype=float) for c in ("a", "b", "n"))
+    point = (a.sum() - b.sum()) / n.sum()
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(per_match), size=(BOOTSTRAP_RESAMPLES, len(per_match)))
+    diffs = (a[idx].sum(axis=1) - b[idx].sum(axis=1)) / n[idx].sum(axis=1)
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    return float(point), float(lo), float(hi)
 
 
 def metrica_diagnostics(params: dict) -> dict:
@@ -220,6 +256,26 @@ def skillcorner_roles(params: dict) -> dict:
     table = pd.DataFrame(
         {"all": _agreement(roles), **{p: _agreement(g) for p, g in roles.groupby("phase")}}
     ).T
+    mid = roles["listed_group"] == "MID"
+    comparisons = {
+        "group strict: template - depth": ("template_strict", "depth_strict", roles),
+        "group lenient: template - depth": ("template_lenient", "depth_lenient", roles),
+        "listed MID strict: template - depth": ("template_strict", "depth_strict", roles[mid]),
+        "side: template - thirds": ("side_template_ok", "side_thirds_ok", roles),
+    }
+    bootstrap = pd.DataFrame(
+        [
+            dict(zip(("difference", "ci_low", "ci_high"), match_bootstrap(df, a, b), strict=True))
+            for a, b, df in comparisons.values()
+        ],
+        index=list(comparisons),
+    )
+    full = roles[roles["full_match"]].dropna(subset=["side_template_ok"])
+    side_by_period_full = full.groupby("period")[["side_template_ok", "side_thirds_ok"]].agg(
+        lambda s: s.astype(bool).mean()
+    )
+    side_by_period_full["n"] = full.groupby("period").size()
+    side_by_period_full["players"] = full.groupby("period")["player_id"].nunique()
     return {
         "matches": len(SKILLCORNER_MATCHES),
         "agreement": table,
@@ -228,6 +284,8 @@ def skillcorner_roles(params: dict) -> dict:
         ].mean(),
         "confusion": pd.crosstab(roles["listed_group"], roles["group_template"]),
         "side_by_half": side_by_half,
+        "bootstrap": bootstrap,
+        "side_by_period_full_match": side_by_period_full,
         "side_outliers": side_by_half[side_by_half["side_template_ok"] < SIDE_OUTLIER],
         "stability": label_stability(formations),
         "back_line_stability": label_stability(formations, key=back_line),
@@ -274,6 +332,17 @@ def main() -> None:
     if not r["side_outliers"].empty:
         print(r["side_outliers"].round(3).to_markdown())
     print(sh.round(3).to_markdown())
+    print(f"match-level bootstrap ({BOOTSTRAP_RESAMPLES} resamples, 95% CI):")
+    print(r["bootstrap"].round(3).to_markdown())
+    print("side agreement by period, full-match players only (pooled):")
+    print(r["side_by_period_full_match"].round(3).to_markdown())
+    all_by_period = (
+        r["roles"]
+        .dropna(subset=["side_template_ok"])
+        .groupby("period")["side_template_ok"]
+        .agg(lambda s: s.astype(bool).mean())
+    )
+    print("side agreement by period, all players (pooled):", all_by_period.round(3).to_dict())
     for name in ("stability", "back_line_stability"):
         st = r[name].groupby("phase")["stability"].median()
         print(f"{name} median by phase:", st.round(3).to_dict())

@@ -39,6 +39,7 @@ class PassEval:
     false_positives: pd.DataFrame  # predicted passes unmatched, with a `reason`
     predicted: pd.DataFrame
     owner: pd.DataFrame
+    truth: pd.DataFrame  # labelled passes scored against
 
 
 def _owned(owner: pd.DataFrame, period: int, player: str, lo: int, hi: int) -> bool:
@@ -125,6 +126,7 @@ def evaluate(version: str, game: int = TEST_GAME) -> PassEval:
         false_positives=fp,
         predicted=pred,
         owner=owner,
+        truth=truth,
     )
 
 
@@ -141,6 +143,15 @@ def failure_table(ev: PassEval, n_examples: int = 3) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("count", ascending=False).reset_index(drop=True)
 
 
+def failures_by_team(ev: PassEval) -> pd.DataFrame:
+    """Missed passes per team and reason, as counts and as a share of that team's true passes."""
+    true_per_team = ev.truth.groupby("team").size().rename("true_passes")
+    table = ev.false_negatives.groupby(["team", "reason"]).size().rename("missed").reset_index()
+    table = table.join(true_per_team, on="team")
+    table["share_of_team_passes"] = table["missed"] / table["true_passes"]
+    return table.sort_values(["reason", "team"]).reset_index(drop=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--version", choices=["v1", "v2"], required=True)
@@ -152,6 +163,7 @@ def main() -> None:
     print(f"true passes={ev.n_true}, predicted passes={ev.n_pred}")
     print("train (games 1-2):", ev.params["train_scores"])
     print(failure_table(ev).to_markdown(index=False))
+    print(failures_by_team(ev).round(3).to_markdown(index=False))
 
 
 if __name__ == "__main__":
