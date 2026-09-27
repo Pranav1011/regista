@@ -6,6 +6,7 @@ import pytest
 
 from regista.analytics.formations import (
     TEMPLATES,
+    back_line,
     change_points,
     classify_shape,
     detect_formations,
@@ -35,7 +36,7 @@ def test_noisy_templates_are_recovered(name):
         assert match.label == name
         roles = [s.role for s in match.slots]
         assert roles == [TEMPLATES[name][i].role for i in perm]
-        assert 0.0 < match.confidence <= 1.0
+        assert 0.0 < match.relative_margin <= 1.0
         assert match.runner_up != name
         assert match.margin == pytest.approx(match.runner_up_cost - match.cost)
         assert match.margin > 0
@@ -138,3 +139,21 @@ def test_role_consistency_is_modal_share():
     assert rc.loc["p1", "modal_role"] == "LB"
     assert rc.loc["p1", "role_consistency"] == pytest.approx(0.75)
     assert rc.loc["p2", "role_consistency"] == pytest.approx(1.0)
+
+
+def test_back_line_stability_ignores_changes_in_front_of_the_defence():
+    labels = ["4-4-2", "4-2-3-1", "4-3-3", "5-3-2", "5-3-2"]
+    formations = pd.DataFrame(
+        {
+            "match_id": "synthetic",
+            "team": "away",
+            "phase": "out",
+            "period": 1,
+            "window": range(len(labels)),
+            "label": pd.array(labels, dtype="string"),
+        }
+    )
+    assert back_line("3-5-2") == 3
+    st = label_stability(formations, key=back_line).iloc[0]
+    assert (st["pairs"], st["unchanged"]) == (4, 3)
+    assert label_stability(formations).iloc[0]["unchanged"] == 1

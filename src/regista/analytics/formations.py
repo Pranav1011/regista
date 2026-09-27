@@ -5,11 +5,18 @@ the team centroid. Positions are expressed in the team's attacking frame (+x
 towards the opponent goal, +y to the left) and scaled per axis to unit spread,
 then matched to template formations with the Hungarian algorithm
 (``scipy.optimize.linear_sum_assignment``). The template with the lowest cost
-wins; confidence is the relative cost margin over the runner-up.
+wins.
+
+Ambiguity is reported as ``margin`` (runner-up cost minus best cost, in
+unit-shape squared distance), the primary signal, and ``relative_margin``
+(margin divided by the runner-up cost, in [0, 1]). Neither is a probability:
+they say how much better the winning template fits than the next one, not how
+likely the label is to be right.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -94,8 +101,8 @@ class ShapeMatch:
         return self.runner_up_cost - self.cost
 
     @property
-    def confidence(self) -> float:
-        """Relative cost margin over the runner-up, in [0, 1]."""
+    def relative_margin(self) -> float:
+        """Margin divided by the runner-up cost, in [0, 1]. Not a probability."""
         return self.margin / self.runner_up_cost if self.runner_up_cost > 0 else 0.0
 
 
@@ -205,7 +212,7 @@ def detect_formations(shapes: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]
 
     Returns (formations, roles). ``formations`` has one row per
     team/period/phase/window with ``label``, ``cost``, ``runner_up``,
-    ``runner_up_cost``, ``margin``, ``confidence`` and ``cost_<template>`` for
+    ``runner_up_cost``, ``margin``, ``relative_margin`` and ``cost_<template>`` for
     every template; windows without exactly
     10 outfield players get label NA. ``roles`` has one row per player per
     window with ``role`` and ``group``.
@@ -230,7 +237,7 @@ def detect_formations(shapes: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]
                 "runner_up": match.runner_up,
                 "runner_up_cost": match.runner_up_cost,
                 "margin": match.margin,
-                "confidence": match.confidence,
+                "relative_margin": match.relative_margin,
             }
         )
         for pid, slot in zip(g["player_id"], match.slots, strict=True):
@@ -273,21 +280,31 @@ def change_points(formations: pd.DataFrame, min_windows: int = 2) -> pd.DataFram
     return pd.DataFrame(rows, columns=[*order, "period", "t_start", "from_label", "to_label"])
 
 
-def label_stability(formations: pd.DataFrame) -> pd.DataFrame:
-    """Share of consecutive labelled windows with an unchanged label (label-free metric).
+def back_line(label: str) -> int:
+    """Number of defenders in a template label, e.g. 3 for '3-5-2'."""
+    return int(label.split("-")[0])
 
-    Per match/team/phase, windows are ordered in time across periods; windows
+
+def label_stability(
+    formations: pd.DataFrame, key: Callable[[str], object] | None = None
+) -> pd.DataFrame:
+    """Share of consecutive labelled windows whose label is unchanged (label-free metric).
+
+    With ``key`` (e.g. ``back_line``), labels are compared after mapping, so
+    '4-4-2' -> '4-2-3-1' counts as unchanged under ``back_line``. Per
+    match/team/phase, windows are ordered in time across periods; windows
     without a label are skipped. Columns: pairs, unchanged, stability.
     """
     rows = []
     order = ["match_id", "team", "phase"]
-    for key, g in formations.dropna(subset=["label"]).groupby(order):
-        labels = g.sort_values(["period", "window"])["label"].to_numpy()
-        pairs = len(labels) - 1
-        unchanged = int((labels[1:] == labels[:-1]).sum()) if pairs > 0 else 0
+    for group, g in formations.dropna(subset=["label"]).groupby(order):
+        labels = g.sort_values(["period", "window"])["label"].tolist()
+        values = np.array([key(v) for v in labels] if key else labels, dtype=object)
+        pairs = len(values) - 1
+        unchanged = int((values[1:] == values[:-1]).sum()) if pairs > 0 else 0
         rows.append(
             {
-                **dict(zip(order, key, strict=True)),
+                **dict(zip(order, group, strict=True)),
                 "pairs": pairs,
                 "unchanged": unchanged,
                 "stability": unchanged / pairs if pairs > 0 else np.nan,

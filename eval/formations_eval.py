@@ -18,6 +18,7 @@ Run: uv run python eval/formations_eval.py
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 from _common import (
     SKILLCORNER_MATCHES,
@@ -30,6 +31,7 @@ from _common import (
 )
 
 from regista.analytics.formations import (
+    back_line,
     detect_formations,
     label_stability,
     role_consistency,
@@ -74,22 +76,54 @@ def role_side(role: str) -> str:
     return role[0] if role[0] in "LR" else "C"
 
 
+WINDOW_KEYS = ["match_id", "period", "team", "phase", "window"]
+METHODS = ("template", "depth")  # group methods; side: template vs thirds
+SIDE_OUTLIER = 0.5  # a flipped half would score near 0; chance level is about 1/3
+
+
+def depth_baseline(shapes: pd.DataFrame) -> pd.Series:
+    """Group by depth rank within each window: 4 deepest DEF, next 4 MID, 2 highest FWD."""
+    rank = shapes.groupby(WINDOW_KEYS)["x"].rank(method="first").astype(int)
+    return pd.Series(np.select([rank <= 4, rank <= 8], ["DEF", "MID"], "FWD"), index=shapes.index)
+
+
+def thirds_baseline(shapes: pd.DataFrame) -> pd.Series:
+    """Side by splitting each window's width (y range) into equal thirds; +y is left."""
+    g = shapes.groupby(WINDOW_KEYS)["y"]
+    lo, hi = g.transform("min"), g.transform("max")
+    third = (hi - lo) / 3
+    side = np.select([shapes["y"] >= hi - third, shapes["y"] <= lo + third], ["L", "R"], "C")
+    return pd.Series(side, index=shapes.index)
+
+
 def match_roles(match_id: str, params: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """(formations, roles joined with listed positions) for one SkillCorner match."""
+    """(formations, per player-window predictions joined with listed positions).
+
+    Template roles and both baselines are computed on the same player-windows,
+    so every method is scored on identical rows.
+    """
     frames, players = skillcorner_match(match_id)
     shapes = window_shapes(frames, possession_phase(frames, params), WINDOW_S, WINDOW_S)
     formations, roles = detect_formations(shapes)
+    shapes = shapes.merge(roles[[*WINDOW_KEYS, "player_id", "role", "group"]],
+                          on=[*WINDOW_KEYS, "player_id"])  # fmt: skip
+    shapes["group_template"] = shapes.pop("group")
+    shapes["group_depth"] = depth_baseline(shapes)
+    shapes["side_template"] = shapes["role"].map(role_side)
+    shapes["side_thirds"] = thirds_baseline(shapes)
+
     listed = players[players["position"].isin(list(_GROUPS))][["player_id", "position"]]
-    joined = roles.merge(listed, on="player_id", how="inner")
+    joined = shapes.merge(listed, on="player_id", how="inner")
     joined["listed_group"] = joined["position"].map(lambda p: _GROUPS[p][0])
-    joined["group_ok"] = joined["group"] == joined["listed_group"]
-    joined["group_ok_lenient"] = [
-        g in _GROUPS[p][1] for g, p in zip(joined["group"], joined["position"], strict=True)
-    ]
+    lenient = joined["position"].map(lambda p: _GROUPS[p][1])
+    for method in METHODS:
+        pred = joined[f"group_{method}"]
+        joined[f"{method}_strict"] = pred == joined["listed_group"]
+        joined[f"{method}_lenient"] = [g in ok for g, ok in zip(pred, lenient, strict=True)]
     joined["listed_side"] = joined["position"].map(listed_side)
-    joined["side_ok"] = (joined["role"].map(role_side) == joined["listed_side"]).where(
-        joined["listed_side"].notna()
-    )
+    for method in ("template", "thirds"):
+        ok = joined[f"side_{method}"] == joined["listed_side"]
+        joined[f"side_{method}_ok"] = ok.where(joined["listed_side"].notna())
     return formations, joined
 
 
@@ -125,7 +159,7 @@ def metrica_diagnostics(params: dict) -> dict:
         "formations": formations,
         "roles": roles,
         "margin_quantiles": labelled["margin"].quantile([0.1, 0.25, 0.5, 0.75]),
-        "confidence_median": float(labelled["confidence"].median()),
+        "relative_margin_median": float(labelled["relative_margin"].median()),
         "label_counts": labelled.groupby(["match_id", "team", "phase"])["label"]
         .value_counts()
         .rename("windows"),
@@ -133,6 +167,7 @@ def metrica_diagnostics(params: dict) -> dict:
             [labelled["match_id"], labelled["team"], labelled["label"]], labelled["runner_up"]
         ),
         "stability": label_stability(formations),
+        "back_line_stability": label_stability(formations, key=back_line),
         "role_consistency": role_consistency(roles)
         .groupby(["match_id", "team", "phase"])[["role_consistency", "group_consistency"]]
         .median(),
@@ -152,6 +187,18 @@ def metrica_diagnostics(params: dict) -> dict:
     }
 
 
+def _agreement(df: pd.DataFrame) -> dict:
+    def mean(col: str) -> float:
+        return float(df[col].dropna().astype(bool).mean())
+
+    return {
+        "player_windows": len(df),
+        **{f"group_{m}_{k}": mean(f"{m}_{k}") for m in METHODS for k in ("strict", "lenient")},
+        "side_template": mean("side_template_ok"),
+        "side_thirds": mean("side_thirds_ok"),
+    }
+
+
 def skillcorner_roles(params: dict) -> dict:
     """Detected roles vs listed positions across all SkillCorner open matches."""
     all_forms, all_roles = [], []
@@ -162,21 +209,28 @@ def skillcorner_roles(params: dict) -> dict:
     formations = pd.concat(all_forms, ignore_index=True)
     roles = pd.concat(all_roles, ignore_index=True)
 
-    def summary(df: pd.DataFrame) -> dict:
-        return {
-            "player_windows": len(df),
-            "group_strict": df["group_ok"].mean(),
-            "group_lenient": df["group_ok_lenient"].mean(),
-            "side": df["side_ok"].dropna().astype(bool).mean(),
-        }
-
+    side_by_half = (
+        roles.dropna(subset=["side_template_ok"])
+        .groupby(["match_id", "period"])[["side_template_ok", "side_thirds_ok"]]
+        .agg(lambda s: s.astype(bool).mean())
+    )
+    side_by_half["n"] = (
+        roles.dropna(subset=["side_template_ok"]).groupby(["match_id", "period"]).size()
+    )
+    table = pd.DataFrame(
+        {"all": _agreement(roles), **{p: _agreement(g) for p, g in roles.groupby("phase")}}
+    ).T
     return {
         "matches": len(SKILLCORNER_MATCHES),
-        "overall": summary(roles),
-        "by_phase": {phase: summary(g) for phase, g in roles.groupby("phase")},
-        "by_listed_group": roles.groupby("listed_group")[["group_ok", "group_ok_lenient"]].mean(),
-        "confusion": pd.crosstab(roles["listed_group"], roles["group"]),
+        "agreement": table,
+        "by_listed_group": roles.groupby("listed_group")[
+            [f"{m}_{k}" for m in METHODS for k in ("strict", "lenient")]
+        ].mean(),
+        "confusion": pd.crosstab(roles["listed_group"], roles["group_template"]),
+        "side_by_half": side_by_half,
+        "side_outliers": side_by_half[side_by_half["side_template_ok"] < SIDE_OUTLIER],
         "stability": label_stability(formations),
+        "back_line_stability": label_stability(formations, key=back_line),
         "formations": formations,
         "roles": roles,
     }
@@ -187,8 +241,11 @@ def main() -> None:
     m = metrica_diagnostics(params)
     print("## Metrica (label-free)")
     print("margin quantiles:", m["margin_quantiles"].round(3).to_dict())
-    print("confidence median:", round(m["confidence_median"], 3))
-    print(m["stability"].round(2).to_markdown(index=False))
+    print("relative margin median (not a probability):", round(m["relative_margin_median"], 3))
+    stab = m["stability"].merge(
+        m["back_line_stability"], on=["match_id", "team", "phase"], suffixes=("", "_back_line")
+    )
+    print(stab.round(2).to_markdown(index=False))
     print(m["role_consistency"].round(2).to_markdown())
     print(m["runner_up"].to_markdown())
     t = m["three_five_two"]
@@ -205,12 +262,21 @@ def main() -> None:
 
     r = skillcorner_roles(params)
     print(f"\n## SkillCorner roles vs listed positions ({r['matches']} matches)")
-    print("overall:", {k: round(v, 3) for k, v in r["overall"].items()})
-    for phase, s in r["by_phase"].items():
-        print(f"{phase} possession:", {k: round(v, 3) for k, v in s.items()})
+    print(r["agreement"].round(3).to_markdown())
     print(r["by_listed_group"].round(3).to_markdown())
     print(r["confusion"].to_markdown())
-    print("stability median:", round(r["stability"]["stability"].median(), 3))
+    sh = r["side_by_half"]
+    side = sh["side_template_ok"]
+    print(f"side agreement per half: min {side.min():.3f}, median {side.median():.3f}")
+    by_period = sh.groupby(level="period")[["side_template_ok", "side_thirds_ok"]].median()
+    print("median side agreement by period:", by_period.round(3).to_dict("index"))
+    print(f"halves below {SIDE_OUTLIER}:", "none" if r["side_outliers"].empty else "")
+    if not r["side_outliers"].empty:
+        print(r["side_outliers"].round(3).to_markdown())
+    print(sh.round(3).to_markdown())
+    for name in ("stability", "back_line_stability"):
+        st = r[name].groupby("phase")["stability"].median()
+        print(f"{name} median by phase:", st.round(3).to_dict())
 
 
 if __name__ == "__main__":
