@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 
@@ -41,8 +42,12 @@ def ensure_metrica(game: int) -> None:
         metrica.ingest(game)
 
 
+@functools.lru_cache(maxsize=3)
 def metrica_game(game: int) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """(frames with velocities, events) for one Metrica sample game."""
+    """(frames with velocities, events) for one Metrica sample game.
+
+    Cached: callers must not modify the returned tables in place.
+    """
     ensure_metrica(game)
     frames = add_velocities(io.read_frames(Source.METRICA, str(game)))
     return frames, io.read_events(Source.METRICA, str(game))
