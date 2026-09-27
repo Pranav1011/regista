@@ -49,27 +49,35 @@ def _logit(p: np.ndarray) -> np.ndarray:
 
 
 def fit_isotonic(p: np.ndarray, y: np.ndarray) -> Isotonic:
-    """Non-decreasing fit of outcomes ``y`` (0/1) on scores ``p``."""
-    order = np.argsort(p, kind="stable")
-    xs, ys = np.asarray(p, float)[order], np.asarray(y, float)[order]
-    # pool-adjacent-violators on blocks of (sum, count, x range)
-    sums, counts, lo, hi = [], [], [], []
-    for xv, yv in zip(xs, ys, strict=True):
-        sums.append(yv)
-        counts.append(1.0)
+    """Non-decreasing fit of outcomes ``y`` (0/1) on scores ``p``.
+
+    Equal scores are pooled first, so tied samples always share one value and
+    knot positions are strictly increasing.
+    """
+    scores, inverse = np.unique(np.asarray(p, float), return_inverse=True)
+    y_sum = np.bincount(inverse, weights=np.asarray(y, float))
+    n = np.bincount(inverse).astype(float)
+    # pool-adjacent-violators over unique scores: blocks of (sum, count, first, last score)
+    sums: list[float] = []
+    counts: list[float] = []
+    lo: list[float] = []
+    hi: list[float] = []
+    for xv, s, c in zip(scores, y_sum, n, strict=True):
+        sums.append(s)
+        counts.append(c)
         lo.append(xv)
         hi.append(xv)
         while len(sums) > 1 and sums[-2] / counts[-2] > sums[-1] / counts[-1]:
-            s, c, h = sums.pop(), counts.pop(), hi.pop()
+            s_last, c_last, h_last = sums.pop(), counts.pop(), hi.pop()
             lo.pop()
-            sums[-1] += s
-            counts[-1] += c
-            hi[-1] = h
-    knots_x, knots_y = [], []
+            sums[-1] += s_last
+            counts[-1] += c_last
+            hi[-1] = h_last
+    knots_x: list[float] = []
+    knots_y: list[float] = []
     for s, c, a, b in zip(sums, counts, lo, hi, strict=True):
-        value = s / c
         knots_x += [a, b] if b > a else [a]
-        knots_y += [value, value] if b > a else [value]
+        knots_y += [s / c, s / c] if b > a else [s / c]
     return Isotonic([float(v) for v in knots_x], [float(v) for v in knots_y])
 
 

@@ -158,6 +158,8 @@ def main() -> None:
         params["tolerance_curve_f1"] = v1.pop("tolerance_curve_f1")
         params["v1"] = v1
     if version in ("v2", "all"):
+        if "pass_tolerance_frames" not in params:
+            raise RuntimeError("v2 is scored at v1's tolerance; run with --version v1 or all first")
         params["v2"] = tune_v2(games, truths, params["pass_tolerance_frames"])
     PARAMS_PATH.write_text(json.dumps(params, indent=2) + "\n")
     print(json.dumps(params, indent=2))

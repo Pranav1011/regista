@@ -39,3 +39,12 @@ def test_calibrators_roundtrip_through_dict():
     assert from_dict(iso.to_dict()).predict(np.array([0.5]))[0] == pytest.approx(0.5)
     platt = fit_platt(np.array([0.2, 0.4, 0.6, 0.8] * 5), np.array([0, 0, 1, 1] * 5))
     np.testing.assert_allclose(from_dict(platt.to_dict()).predict([0.3]), platt.predict([0.3]))
+
+
+def test_isotonic_pools_tied_scores():
+    iso = fit_isotonic(np.array([0.2, 0.5, 0.5, 0.8]), np.array([0.0, 0.0, 1.0, 1.0]))
+    assert iso.predict(np.array([0.5]))[0] == pytest.approx(0.5)
+    assert np.all(np.diff(iso.x) > 0)
+    iso = fit_isotonic(np.array([0.0, 0.0, 0.0, 1.0, 1.0]), np.array([0.0, 1.0, 0.0, 1.0, 1.0]))
+    assert iso.predict(np.array([0.0]))[0] == pytest.approx(1 / 3)
+    assert iso.predict(np.array([1.0]))[0] == pytest.approx(1.0)
