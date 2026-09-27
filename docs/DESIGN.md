@@ -40,10 +40,11 @@ with no half near zero, so no half is flipped (`eval/formations_eval.py`).
 ## ADR-003: Pass detector v2 (per-match kick-moment radius), frozen before evaluation
 
 **Context.** v1 owns the ball to the nearest player within a fixed radius tuned
-on Metrica games 1-2 (0.5 m). On held-out game 3 it scored F1 0.801 against
-0.914 on training. The failure analysis showed game 3 records the ball further
-from the passer at release: more than 0.5 m in 10.0% of labelled releases,
-against 2.5-3.3% in games 1-2.
+on Metrica games 1-2 (0.5 m). On held-out game 3, scored against the event
+labels as published, it reached F1 0.801 against 0.914 on training. The
+failure analysis showed game 3 apparently recording the ball further from the
+passer at release: more than 0.5 m in 10.0% of labelled releases, against
+2.5-3.3% in games 1-2.
 
 **Decision.** v2 derives the ownership radius per match from unlabelled
 tracking: the 0.95 quantile of ball-to-nearest-player distance just before each
@@ -51,14 +52,23 @@ kick (ball speed crossing 3 m/s upwards and reaching 7 m/s within 0.4 s). A
 release gate requires the ball to accelerate away from the passer, and the pass
 starts at that frame. A first idea (a quantile of distances in slow-ball frames)
 was rejected on training data alone: it gave 0.91 m for game 1 and 0.068 m for
-game 2. v2 was tuned on games 1-2, committed with its parameters frozen
-(commit `8ce2eb6`), and only then evaluated on game 3, once.
+game 2. v2 was tuned on games 1-2 (train F1 0.898), committed with its
+parameters frozen (commit `8ce2eb6`), and only then evaluated on game 3.
 
-**Consequence.** v2 scores F1 0.809 on game 3 against v1's 0.801; the gain comes
-mostly from release timing, and may be within noise. v2 was designed after
-seeing v1's game-3 failures, which the report states. Both versions stay
-reproducible (`eval/pass_detection.py --version v1|v2`, parameters in
-`eval/params_phase1.json`).
+**Amendment (after ADR-005).** The motivating evidence was mostly a data error.
+Game 3's event file swaps two players in the second half (ADR-005); with the
+swap corrected, releases with the ball more than 0.5 m from the passer fall
+from 10.0% to 4.2%, close to games 1-2. v1 and v2 were not changed or re-tuned.
+On corrected labels, game 3 F1 is 0.908 for v1 and 0.914 for v2 (0.801 and
+0.809 on the published labels); both are in line with their training scores.
+
+**Consequence.** v1 did not have a real transfer problem; the gap came from the
+labels. v2 remains the default because it is frozen, scores marginally higher
+on game 3, and its per-match radius needs no hand-set value for new data
+sources. Its advantage over v1 is small and may be within noise. Both versions
+stay reproducible (`eval/pass_detection.py --version v1|v2`, which prints
+scores on both label sets; parameters in `eval/params_phase1.json`). Lesson:
+check label integrity before diagnosing a model.
 
 ## ADR-004: Template labels are noisy at 5-minute windows; role groups and sides are the output
 
@@ -105,3 +115,24 @@ windows (label stability median 0.50 on SkillCorner). Back-line alerts use
 out-of-possession windows only, where the back-line count is stable in 0.800 of
 consecutive windows against 0.684 in possession. An alert on every template flip
 would be mostly noise.
+
+## ADR-005: Correct a player-id swap in Metrica game 3 events; report both label sets
+
+**Context.** Diagnosing a weak game-3 home pass network showed player P3580
+under-credited by 34 passes and P3573 over-credited by 31. In game 3's second
+half, every event credited to P3580 starts exactly on P3573's tracked position
+(median distance 0.0 m, 21 m from P3580's own track), and vice versa: 210
+events in all. A scan of every player-half in games 1-3 finds no other
+mismatch (`eval/_common.py::event_id_mismatches`). The swap caused 127 of v1's
+233 game-3 misses and 127 of its 208 false passes.
+
+**Decision.** Fix the ids in the event parser with an explicit, per-period
+correction table (`metrica_events.ID_CORRECTIONS`), keeping the published ids
+in `from_player_raw` / `to_player_raw`. Report scores on both label sets.
+Nothing was re-tuned: games 1-2 have no corrections, so tuning data is
+unchanged.
+
+**Consequence.** Game-3 numbers are reported primarily on corrected labels,
+with published-label numbers alongside. The correction is justified by the
+tracking itself, not by model output, and the mismatch check runs in eval so it
+would catch a regression or a new swap.

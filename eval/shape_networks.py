@@ -1,9 +1,11 @@
 """Team shape summaries and pass-network similarity on the Metrica games.
 
-Pass networks are built twice per team, from passes inferred from tracking
-(pass detector v1 and v2) and from Metrica's labelled PASS events, on the same
-nodes (mean positions in possession). Game 3 is the held-out game; games 1-2
-were used to tune pass detection, so their network scores are optimistic.
+Pass networks are built per team from passes inferred from tracking (pass
+detector v1 and v2) and from Metrica's labelled PASS events, on the same nodes
+(mean positions in possession). Event networks use corrected player ids, with
+the published ids reported alongside (see ``metrica_events.ID_CORRECTIONS``).
+Game 3 is the held-out game; games 1-2 were used to tune pass detection, so
+their network scores are optimistic.
 
 Run: uv run python eval/shape_networks.py
 """
@@ -24,6 +26,7 @@ from regista.analytics.shape import SHAPE_METRICS, shape_windows, team_shape
 
 GAMES = (*TRAIN_GAMES, TEST_GAME)
 VERSIONS = ("v1", "v2")
+LABELS = ("corrected", "raw")  # event player ids; see metrica_events.ID_CORRECTIONS
 
 
 def evaluate() -> dict:
@@ -35,18 +38,21 @@ def evaluate() -> dict:
         shapes.append(shape_windows(team_shape(frames), possession))
 
         nodes = node_positions(frames, possession)
-        truth = true_passes(events).assign(match_id=str(game))
-        event_edges = pass_edges(truth)
-        networks[(game, "events")] = (nodes, event_edges)
+        event_edges = {
+            labels: pass_edges(true_passes(events, labels).assign(match_id=str(game)))
+            for labels in LABELS
+        }
+        networks[(game, "events")] = (nodes, event_edges["corrected"])
         for version in VERSIONS:
             _, detected, _ = predict(frames, version, params)
             edges = pass_edges(detected[detected["kind"] == "pass"])
             networks[(game, version)] = (nodes, edges)
-            comparisons.append(
-                compare_networks(edges, event_edges).assign(
-                    game=game, version=version, held_out=game == TEST_GAME
+            for labels in LABELS:
+                comparisons.append(
+                    compare_networks(edges, event_edges[labels]).assign(
+                        game=game, version=version, labels=labels, held_out=game == TEST_GAME
+                    )
                 )
-            )
     shape = pd.concat(shapes, ignore_index=True)
     return {
         "shape_by_phase": shape.groupby(["match_id", "team", "phase"])[SHAPE_METRICS].median(),
@@ -86,8 +92,8 @@ def main() -> None:
     print("## Team shape (median of 5-minute window medians)")
     print(r["shape_by_phase"].round(1).to_markdown())
     print("\n## Pass networks: inferred (a) vs labelled events (b)")
-    cols = ["game", "held_out", "version", "team", "edges_a", "edges_b", "passes_a", "passes_b",
-            "pearson", "spearman", "weighted_jaccard"]  # fmt: skip
+    cols = ["game", "held_out", "labels", "version", "team", "edges_a", "edges_b",
+            "passes_a", "passes_b", "pearson", "spearman", "weighted_jaccard"]  # fmt: skip
     print(r["network_similarity"][cols].round(3).to_markdown(index=False))
     for version in VERSIONS:
         for team in ("home", "away"):

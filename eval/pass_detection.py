@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 from _common import TEST_GAME, load_params, metrica_game, true_passes, v2_owner
 
@@ -28,6 +29,7 @@ CONTEXT_FRAMES = 25  # 1 s at 25 fps, used to describe what surrounds a failure
 class PassEval:
     game: int
     version: str
+    labels: str  # "corrected" or "raw" event player ids
     params: dict  # the version's parameters
     radius_m: float
     precision: float
@@ -99,11 +101,11 @@ def predict(
     raise ValueError(f"unknown pass detector version {version!r}")
 
 
-def evaluate(version: str, game: int = TEST_GAME) -> PassEval:
+def evaluate(version: str, game: int = TEST_GAME, labels: str = "corrected") -> PassEval:
     params = load_params()
     tol = params["pass_tolerance_frames"]
     frames, events = metrica_game(game)
-    truth = true_passes(events)
+    truth = true_passes(events, labels)
     owner, detected, radius = predict(frames, version, params)
     pred = detected[detected["kind"] == "pass"].reset_index(drop=True)
     score = score_passes(pred, truth, tol)
@@ -115,6 +117,7 @@ def evaluate(version: str, game: int = TEST_GAME) -> PassEval:
     return PassEval(
         game=game,
         version=version,
+        labels=labels,
         params=params[version],
         radius_m=radius,
         precision=score.precision,
@@ -152,15 +155,40 @@ def failures_by_team(ev: PassEval) -> pd.DataFrame:
     return table.sort_values(["reason", "team"]).reset_index(drop=True)
 
 
+def release_distance_share(game: int, labels: str, threshold_m: float = 0.5) -> float:
+    """Share of labelled pass releases with the ball more than ``threshold_m`` from the passer."""
+    frames, events = metrica_game(game)
+    truth = true_passes(events, labels)
+    idx = frames.set_index(["period", "frame", "player_id"])[["x", "y"]]
+    frame_ids = truth["start_frame"].astype(int)
+    passer = idx.reindex(pd.MultiIndex.from_arrays([truth["period"], frame_ids,
+                                                    truth["from_player"]])).to_numpy()  # fmt: skip
+    ball = idx.reindex(pd.MultiIndex.from_arrays([truth["period"], frame_ids,
+                                                  ["ball"] * len(truth)])).to_numpy()  # fmt: skip
+    dist = np.hypot(*(passer - ball).T)
+    dist = dist[~np.isnan(dist)]
+    return float((dist > threshold_m).mean())
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--version", choices=["v1", "v2"], required=True)
-    ev = evaluate(parser.parse_args().version)
+    version = parser.parse_args().version
+    raw = evaluate(version, labels="raw")
     print(
-        f"{ev.version} game {ev.game} (held out): "
+        f"{version} game {raw.game} (held out), published labels: "
+        f"P={raw.precision:.3f} R={raw.recall:.3f} F1={raw.f1:.3f}"
+    )
+    ev = evaluate(version, labels="corrected")
+    print(
+        f"{ev.version} game {ev.game} (held out), corrected labels: "
         f"P={ev.precision:.3f} R={ev.recall:.3f} F1={ev.f1:.3f} (radius {ev.radius_m:.3f} m)"
     )
     print(f"true passes={ev.n_true}, predicted passes={ev.n_pred}")
+    for game in (1, 2, 3):
+        shares = {lab: release_distance_share(game, lab) for lab in ("raw", "corrected")}
+        print(f"game {game}: releases with ball > 0.5 m from passer:",
+              {k: round(v, 3) for k, v in shares.items()})  # fmt: skip
     print("train (games 1-2):", ev.params["train_scores"])
     print(failure_table(ev).to_markdown(index=False))
     print(failures_by_team(ev).round(3).to_markdown(index=False))

@@ -5,7 +5,7 @@ import json
 import pandas as pd
 import pytest
 
-from regista.ingest.metrica_events import parse_csv, parse_json, to_canonical
+from regista.ingest.metrica_events import correct_ids, parse_csv, parse_json, to_canonical
 
 CSV = (
     (
@@ -77,6 +77,21 @@ def test_to_canonical_converts_and_flips_periods():
             "end_y": [0.5, 0.5],
         }
     )
-    ev = to_canonical(raw, flipped_periods=[2])
+    ev = to_canonical(correct_ids(raw, {}), flipped_periods=[2])
     assert (ev.loc[0, "start_x"], ev.loc[0, "start_y"]) == pytest.approx((52.5, 34.0))
     assert (ev.loc[1, "start_x"], ev.loc[1, "start_y"]) == pytest.approx((-52.5, -34.0))
+
+
+def test_correct_ids_swaps_only_in_the_given_period_and_keeps_raw():
+    raw = pd.DataFrame(
+        {
+            "period": [1, 2, 2],
+            "from_player": ["P1", "P1", "P2"],
+            "to_player": ["P2", "P2", "P9"],
+        }
+    )
+    out = correct_ids(raw, {2: {"P1": "P2", "P2": "P1"}})
+    assert out["from_player"].tolist() == ["P1", "P2", "P1"]
+    assert out["to_player"].tolist() == ["P2", "P1", "P9"]
+    assert out["from_player_raw"].tolist() == ["P1", "P1", "P2"]
+    assert out["to_player_raw"].tolist() == ["P2", "P2", "P9"]

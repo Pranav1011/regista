@@ -7,6 +7,14 @@ are downloaded once into ``data/raw/metrica/``.
 Events are returned in canonical coordinates with the same per-period
 direction flips as the tracking data. Metrica records completed passes as
 PASS; failed passes appear as BALL LOST.
+
+Known label error: in game 3's second half, the event file swaps players P3573
+and P3580 relative to the tracking file. Every event credited to one of them
+starts exactly on the other's tracked position (median 0.0 m, vs 21 m from
+their own track). ``ID_CORRECTIONS`` fixes this in ``from_player`` /
+``to_player``; the published ids are kept in ``from_player_raw`` /
+``to_player_raw`` so uncorrected scores stay reproducible. The evidence is
+re-checked by ``eval/_common.py::event_id_mismatches``.
 """
 
 from __future__ import annotations
@@ -29,6 +37,11 @@ _FILES = {
     3: "Sample_Game_3/Sample_Game_3_events.json",
 }
 
+# game -> period -> {published id: id matching the tracking data}
+ID_CORRECTIONS: dict[int, dict[int, dict[str, str]]] = {
+    3: {2: {"P3573": "P3580", "P3580": "P3573"}},
+}
+
 EVENT_COLUMNS = [
     "period",
     "type",
@@ -36,6 +49,8 @@ EVENT_COLUMNS = [
     "team",
     "from_player",
     "to_player",
+    "from_player_raw",
+    "to_player_raw",
     "start_frame",
     "end_frame",
     "start_x",
@@ -137,6 +152,8 @@ def to_canonical(events: pd.DataFrame, flipped_periods: list[int]) -> pd.DataFra
             "team": "string",
             "from_player": "string",
             "to_player": "string",
+            "from_player_raw": "string",
+            "to_player_raw": "string",
             "start_frame": "Int64",
             "end_frame": "Int64",
         }
@@ -150,4 +167,15 @@ def load(game: int, players: pd.DataFrame, flipped_periods: list[int]) -> pd.Dat
     unknown_team = raw["from_player"].notna() & raw["team"].isna()
     if unknown_team.any():
         raise ValueError(f"game {game}: {int(unknown_team.sum())} events by unknown players")
-    return to_canonical(raw, flipped_periods)
+    return to_canonical(correct_ids(raw, ID_CORRECTIONS.get(game, {})), flipped_periods)
+
+
+def correct_ids(events: pd.DataFrame, corrections: dict[int, dict[str, str]]) -> pd.DataFrame:
+    """Apply per-period player-id corrections, keeping the published ids as ``*_raw``."""
+    out = events.copy()
+    for col in ("from_player", "to_player"):
+        out[f"{col}_raw"] = out[col]
+        for period, mapping in corrections.items():
+            in_period = out["period"] == period
+            out.loc[in_period, col] = out.loc[in_period, col].replace(mapping)
+    return out

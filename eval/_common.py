@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from regista import io
@@ -47,10 +48,49 @@ def metrica_game(game: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     return frames, io.read_events(Source.METRICA, str(game))
 
 
-def true_passes(events: pd.DataFrame) -> pd.DataFrame:
-    """Metrica's labelled completed passes (type PASS) with a known passer and receiver."""
+def true_passes(events: pd.DataFrame, labels: str = "corrected") -> pd.DataFrame:
+    """Metrica's labelled completed passes (type PASS) with a known passer and receiver.
+
+    ``labels="corrected"`` uses player ids after ``metrica_events.ID_CORRECTIONS``;
+    ``"raw"`` uses the ids as published.
+    """
+    if labels not in ("corrected", "raw"):
+        raise ValueError(f"labels must be 'corrected' or 'raw', got {labels!r}")
     passes = events[events["type"] == "PASS"]
+    if labels == "raw":
+        passes = passes.assign(
+            from_player=passes["from_player_raw"], to_player=passes["to_player_raw"]
+        )
     return passes.dropna(subset=["start_frame", "from_player", "to_player"]).reset_index(drop=True)
+
+
+def event_id_mismatches(
+    frames: pd.DataFrame, events: pd.DataFrame, player_col: str = "from_player"
+) -> pd.DataFrame:
+    """Player-halves whose events start nearest to a different tracked player.
+
+    For each event with a start position, finds the tracked player closest to
+    that position at the start frame. A player-half is flagged when the most
+    common nearest player is not the credited player. An empty result means
+    event ids and tracking ids agree.
+    """
+    e = events.dropna(subset=["start_frame", "start_x", player_col])
+    e = e[["period", "start_frame", player_col, "start_x", "start_y"]].rename(
+        columns={"start_frame": "frame", player_col: "credited"}
+    )
+    e = e.astype({"frame": "int64"}).reset_index(drop=True).rename_axis("event").reset_index()
+    players = frames.loc[frames["team"] != "ball", ["period", "frame", "player_id", "x", "y"]]
+    pairs = e.merge(players, on=["period", "frame"])
+    pairs["dist"] = np.hypot(pairs["x"] - pairs["start_x"], pairs["y"] - pairs["start_y"])
+    nearest = pairs.loc[pairs.groupby("event")["dist"].idxmin()]
+    summary = nearest.groupby(["period", "credited"]).agg(
+        events=("event", "size"),
+        nearest_player=("player_id", lambda s: s.value_counts().index[0]),
+        share=("player_id", lambda s: s.value_counts().iloc[0] / len(s)),
+        median_dist_to_nearest=("dist", "median"),
+    )
+    summary = summary.reset_index()
+    return summary[summary["nearest_player"] != summary["credited"]].reset_index(drop=True)
 
 
 def load_params() -> dict:
