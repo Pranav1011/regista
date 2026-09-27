@@ -1,0 +1,23 @@
+# environments
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# data, video, weights: never committed (see CLAUDE.md data policy)
+data/*
+!data/README.md
+outputs/
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# tooling
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/

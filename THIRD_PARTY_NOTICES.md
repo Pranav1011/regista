@@ -1,0 +1,30 @@
+# Third-party code, models, and data
+
+Every borrowed piece of code, model, or dataset is listed here with its terms.
+"Verified" means someone read the actual LICENSE or terms on the date shown.
+Re-check terms before reuse elsewhere.
+
+## Code and models
+
+| Source | License / terms | Status | Use in Regista |
+|---|---|---|---|
+| [PySport/kloppy](https://github.com/PySport/kloppy) | BSD-3-Clause | verified 2026-09-27 | Dependency: loading and standardising tracking/event data |
+| [Friends-of-Tracking-Data-FoTD/LaurieOnTracking](https://github.com/Friends-of-Tracking-Data-FoTD/LaurieOnTracking) | MIT | verified 2026-09-27 | Reference for kinematics, formations, pitch control, EPV |
+| [roboflow/rf-detr](https://github.com/roboflow/rf-detr) | Apache-2.0 (Nano–Large). XL/2XL use a separate Platform Model License, so do not use them | verified 2026-09-27 | Phase 3 detector candidate (benchmarked against YOLO) |
+| [roboflow/sports](https://github.com/roboflow/sports) | MIT | verified 2026-09-27 | Phase 3 reference (team clustering, pitch keypoints, radar) |
+| [roboflow/supervision](https://github.com/roboflow/supervision) | MIT | verified 2026-09-27 | Phase 3 dependency (tracking, annotation) |
+| [SoccerNet/sn-gamestate](https://github.com/SoccerNet/sn-gamestate) + [TrackLab](https://github.com/TrackingLaboratory/tracklab) | GPL-3.0 (sn-gamestate), MIT (TrackLab) | verified 2026-09-27 | Phase 3 benchmark harness only; keep outside `src/` |
+| [mplsoccer](https://github.com/andrewRowlinson/mplsoccer) | MIT | verified 2026-09-27 | Pitch plots |
+| [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 | verified 2026-09-27 | Phase 3 detector candidate. This is why the repo itself is AGPL-3.0 |
+
+## Data
+
+| Source | Terms | Status | Use in Regista |
+|---|---|---|---|
+| [metrica-sports/sample-data](https://github.com/metrica-sports/sample-data) | No formal license; README asks for responsible use and acknowledgement in public work | verified 2026-09-27 | Dev + pass-detection validation. Not redistributed |
+| [SkillCorner/opendata](https://github.com/SkillCorner/opendata) | MIT | verified 2026-09-27 | Dev + role validation + noisy-data stress test |
+| [StatsBomb open data](https://github.com/hudl/open-data) | Public non-commercial use; credit StatsBomb and show their logo | verified 2026-09-27 | Later: formation checks via 360 freeze frames |
+| [SoccerNet](https://www.soccer-net.org/data) videos | NDA; no redistribution (copyrighted broadcasts) | verified 2026-09-27 | Local benchmarking only. Never in repo, README, or demos |
+
+Data credits: tracking data from Metrica Sports and SkillCorner; event data
+from StatsBomb (where used).
