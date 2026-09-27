@@ -48,6 +48,14 @@ def _logit(p: np.ndarray) -> np.ndarray:
     return np.log(p / (1 - p))
 
 
+def mean_log_loss(w: np.ndarray, design: np.ndarray, y: np.ndarray) -> tuple[float, np.ndarray]:
+    """Mean logistic loss and its gradient for weights ``w`` on a design matrix."""
+    logits = design @ w
+    loss = float(np.mean(np.logaddexp(0.0, logits) - y * logits))
+    grad = design.T @ (1.0 / (1.0 + np.exp(-logits)) - y) / len(y)
+    return loss, grad
+
+
 def fit_isotonic(p: np.ndarray, y: np.ndarray) -> Isotonic:
     """Non-decreasing fit of outcomes ``y`` (0/1) on scores ``p``.
 
@@ -84,12 +92,9 @@ def fit_isotonic(p: np.ndarray, y: np.ndarray) -> Isotonic:
 def fit_platt(p: np.ndarray, y: np.ndarray) -> Platt:
     """Maximum-likelihood Platt scaling."""
     z, y = _logit(np.asarray(p, float)), np.asarray(y, float)
-
-    def nll(w: np.ndarray) -> float:
-        logits = w[0] * z + w[1]
-        return float(np.sum(np.logaddexp(0.0, logits) - y * logits))
-
-    res = minimize(nll, np.array([1.0, 0.0]), method="BFGS")
+    design = np.column_stack([z, np.ones_like(z)])
+    res = minimize(mean_log_loss, np.array([1.0, 0.0]), args=(design, y), jac=True,
+                   method="L-BFGS-B")  # fmt: skip
     if not res.success:
         raise RuntimeError(f"Platt scaling did not converge: {res.message}")
     return Platt(float(res.x[0]), float(res.x[1]))

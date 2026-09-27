@@ -36,7 +36,7 @@ from _common import EVAL_DIR, TEST_GAME, TRAIN_GAMES, load_params, metrica_game
 from pass_detection import predict
 from scipy.optimize import minimize
 
-from regista.analytics.calibration import fit_isotonic, fit_platt
+from regista.analytics.calibration import fit_isotonic, fit_platt, mean_log_loss
 from regista.analytics.kinematics import frame_interval
 from regista.analytics.passing_options import (
     build_scene,
@@ -250,13 +250,9 @@ class Logistic:
 def fit_logistic(x: np.ndarray, y: np.ndarray) -> Logistic:
     """Unregularised logistic regression by maximum likelihood (standardised features)."""
     mean, std = x.mean(axis=0), x.std(axis=0)
-    z = (x - mean) / std
-
-    def nll(w: np.ndarray) -> float:
-        logits = w[0] + z @ w[1:]
-        return float(np.sum(np.logaddexp(0.0, logits) - y * logits))
-
-    res = minimize(nll, np.zeros(z.shape[1] + 1), method="BFGS")
+    design = np.column_stack([np.ones(len(x)), (x - mean) / std])
+    res = minimize(mean_log_loss, np.zeros(design.shape[1]), args=(design, y), jac=True,
+                   method="L-BFGS-B")  # fmt: skip
     if not res.success:
         raise RuntimeError(f"logistic regression did not converge: {res.message}")
     return Logistic(mean, std, res.x)
