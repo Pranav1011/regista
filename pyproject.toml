@@ -27,7 +27,11 @@ vision = ["ultralytics", "rfdetr", "supervision", "opencv-python-headless"]
 agent = ["mcp"]
 
 [dependency-groups]
-dev = ["pytest", "ruff"]
+dev = [
+    "pytest",
+    "ruff",
+    "tabulate>=0.10.0",
+]
 
 [build-system]
 requires = ["hatchling"]

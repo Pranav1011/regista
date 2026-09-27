@@ -1,0 +1,30 @@
+{
+  "tuned_on": [
+    1,
+    2
+  ],
+  "possession": {
+    "radius_m": 0.5,
+    "max_ball_speed": 15.0,
+    "min_hold_frames": 2,
+    "max_gap_frames": 125
+  },
+  "pass_tolerance_frames": 5,
+  "tolerance_curve_f1": {
+    "1": 0.5907,
+    "2": 0.8636,
+    "3": 0.8993,
+    "5": 0.9102,
+    "8": 0.9154,
+    "12": 0.9177,
+    "18": 0.9182,
+    "25": 0.9188,
+    "50": 0.9188
+  },
+  "train_scores": {
+    "precision": 0.924,
+    "recall": 0.8968,
+    "f1": 0.9102
+  },
+  "grid_size": 480
+}
