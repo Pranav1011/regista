@@ -9,7 +9,7 @@ Re-check terms before reuse elsewhere.
 | Source | License / terms | Status | Use in Regista |
 |---|---|---|---|
 | [PySport/kloppy](https://github.com/PySport/kloppy) | BSD-3-Clause | verified 2026-09-27 | Dependency: loading and standardising tracking/event data |
-| [Friends-of-Tracking-Data-FoTD/LaurieOnTracking](https://github.com/Friends-of-Tracking-Data-FoTD/LaurieOnTracking) | MIT | verified 2026-09-27 | Reference for kinematics, formations, pitch control, EPV |
+| [Friends-of-Tracking-Data-FoTD/LaurieOnTracking](https://github.com/Friends-of-Tracking-Data-FoTD/LaurieOnTracking) | MIT | verified 2026-09-27 | Pitch control adapted in `src/regista/analytics/passing_options.py` (from `Metrica_PitchControl.py`, published default parameters); otherwise reference only |
 | [roboflow/rf-detr](https://github.com/roboflow/rf-detr) | Apache-2.0 (Nano–Large). XL/2XL use a separate Platform Model License, so do not use them | verified 2026-09-27 | Phase 3 detector candidate (benchmarked against YOLO) |
 | [roboflow/sports](https://github.com/roboflow/sports) | MIT | verified 2026-09-27 | Phase 3 reference (team clustering, pitch keypoints, radar) |
 | [roboflow/supervision](https://github.com/roboflow/supervision) | MIT | verified 2026-09-27 | Phase 3 dependency (tracking, annotation) |
