@@ -45,8 +45,9 @@ def metrica_game(game: int) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def true_passes(events: pd.DataFrame) -> pd.DataFrame:
-    """Metrica's labelled completed passes (type PASS)."""
-    return events[events["type"] == "PASS"].dropna(subset=["start_frame"]).reset_index(drop=True)
+    """Metrica's labelled completed passes (type PASS) with a known passer and receiver."""
+    passes = events[events["type"] == "PASS"]
+    return passes.dropna(subset=["start_frame", "from_player", "to_player"]).reset_index(drop=True)
 
 
 def load_params() -> dict:
