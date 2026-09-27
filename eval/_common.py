@@ -22,19 +22,13 @@ TEST_GAME = 3
 def ensure_metrica(game: int) -> None:
     """Ingest a Metrica game if its processed files are missing."""
     match_id = str(game)
-    if (
+    if not (
         io.frames_path(Source.METRICA, match_id).exists()
         and io.events_path(Source.METRICA, match_id).exists()
     ):
-        return
-    from regista.ingest import metrica, metrica_events
+        from regista.ingest import metrica
 
-    result = metrica.load(game)
-    io.write_frames(result.frames, Source.METRICA, match_id)
-    io.write_players(result.players, Source.METRICA, match_id)
-    io.write_info(result.info, Source.METRICA, match_id)
-    events = metrica_events.load(game, result.players, result.info["flipped_periods"])
-    io.write_events(events, Source.METRICA, match_id)
+        metrica.ingest(game)
 
 
 def metrica_game(game: int) -> tuple[pd.DataFrame, pd.DataFrame]:

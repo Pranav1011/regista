@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from regista import io
 from regista.ingest._kloppy import IngestResult
-from regista.schema import Source
 
 app = typer.Typer(help="Regista: football match intelligence.", no_args_is_help=True)
 ingest_app = typer.Typer(help="Convert open data into canonical frames.", no_args_is_help=True)
@@ -18,27 +16,23 @@ def main() -> None:
     """Regista: football match intelligence."""
 
 
-def _write(source: Source, match_id: str, result: IngestResult) -> None:
-    path = io.write_frames(result.frames, source, match_id)
-    io.write_players(result.players, source, match_id)
-    io.write_info(result.info, source, match_id)
-    dropped = result.info["rows_dropped_out_of_bounds"]
+def _report(result: IngestResult) -> None:
+    info = result.info
+    d = info["rows_dropped_out_of_bounds"]
     typer.echo(
-        f"wrote {len(result.frames):,} rows to {path} ({dropped} out-of-bounds rows dropped)"
+        f"{info['source']} {info['match_id']}: {info['rows']:,} rows "
+        f"(out of bounds, dropped: {d['ball']} ball, {d['player']} player rows)"
     )
+    if "events" in info:
+        typer.echo(f"{info['events']:,} events")
 
 
 @ingest_app.command("metrica")
 def ingest_metrica(game: int = typer.Option(..., help="Sample game number (1-3).")) -> None:
-    """Ingest a Metrica Sports sample game."""
-    from regista.ingest import metrica, metrica_events
+    """Ingest a Metrica Sports sample game (tracking and events)."""
+    from regista.ingest import metrica
 
-    match_id = metrica.match_id(game)
-    result = metrica.load(game)
-    _write(Source.METRICA, match_id, result)
-    events = metrica_events.load(game, result.players, result.info["flipped_periods"])
-    path = io.write_events(events, Source.METRICA, match_id)
-    typer.echo(f"wrote {len(events):,} events to {path}")
+    _report(metrica.ingest(game))
 
 
 @ingest_app.command("skillcorner")
@@ -48,7 +42,7 @@ def ingest_skillcorner(
     """Ingest a SkillCorner open-data match."""
     from regista.ingest import skillcorner
 
-    _write(Source.SKILLCORNER, match, skillcorner.load(match))
+    _report(skillcorner.ingest(match))
 
 
 if __name__ == "__main__":

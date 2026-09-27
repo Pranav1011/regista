@@ -90,10 +90,16 @@ def test_ambiguous_direction_raises():
         home_attack_flips(frames)
 
 
-def test_drop_out_of_bounds_counts_rows():
-    frames = pd.DataFrame({"x": [0.0, 58.0, -10.0, 0.0], "y": [0.0, 0.0, -40.0, 38.9]})
+def test_drop_out_of_bounds_counts_ball_and_player_rows():
+    frames = pd.DataFrame(
+        {
+            "team": ["home", "ball", "away", "ball", "home"],
+            "x": [0.0, 58.0, -10.0, 0.0, -60.0],
+            "y": [0.0, 0.0, -40.0, 38.9, 0.0],
+        }
+    )
     kept, dropped = drop_out_of_bounds(frames)
-    assert dropped == 2
+    assert dropped == {"ball": 1, "player": 2}
     assert kept["y"].tolist() == [0.0, 38.9]
 
 

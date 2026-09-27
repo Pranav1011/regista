@@ -99,13 +99,17 @@ def normalise_direction(frames: pd.DataFrame, flips: dict[int, bool]) -> pd.Data
     return out
 
 
-def drop_out_of_bounds(frames: pd.DataFrame) -> tuple[pd.DataFrame, int]:
-    """Drop rows beyond the schema's pitch bounds and return how many were dropped.
+def drop_out_of_bounds(frames: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Drop rows beyond the schema's pitch bounds; return counts split by ball/player rows.
 
     Providers occasionally record real positions a few metres past the margin
-    (a ball behind the goal after a shot). Callers must report the count.
+    (a ball behind the goal after a shot). The schema margin is kept strict
+    because it also filters off-pitch detections from CV. Callers must report
+    the counts.
     """
     x_lim = PITCH_LENGTH_M / 2 + BOUNDS_MARGIN_M
     y_lim = PITCH_WIDTH_M / 2 + BOUNDS_MARGIN_M
     out = (frames["x"].abs() > x_lim) | (frames["y"].abs() > y_lim)
-    return frames[~out].reset_index(drop=True), int(out.sum())
+    is_ball = frames["team"] == Team.BALL.value
+    counts = {"ball": int((out & is_ball).sum()), "player": int((out & ~is_ball).sum())}
+    return frames[~out].reset_index(drop=True), counts

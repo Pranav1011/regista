@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pandas as pd
 from kloppy.domain import Ground, TrackingDataset
 
+from regista import io
 from regista.ingest._common import (
     drop_out_of_bounds,
     home_attack_flips,
@@ -23,6 +25,14 @@ class IngestResult:
     frames: pd.DataFrame
     players: pd.DataFrame
     info: dict = field(default_factory=dict)  # provenance written next to the parquet
+
+    def save(self) -> Path:
+        """Write frames, players, and provenance; return the frames path."""
+        source, match_id = Source(self.info["source"]), self.info["match_id"]
+        path = io.write_frames(self.frames, source, match_id)
+        io.write_players(self.players, source, match_id)
+        io.write_info(self.info, source, match_id)
+        return path
 
 
 def players_table(dataset: TrackingDataset) -> pd.DataFrame:
@@ -54,7 +64,7 @@ def dataset_to_canonical(dataset: TrackingDataset, match_id: str, source: Source
     frames = wide_to_long(wide, player_teams, match_id, source)
     flips = home_attack_flips(frames)
     frames = normalise_direction(frames, flips)
-    frames, n_dropped = drop_out_of_bounds(frames)
+    frames, dropped = drop_out_of_bounds(frames)
     dims = dataset.metadata.pitch_dimensions
     info = {
         "source": source.value,
@@ -63,6 +73,6 @@ def dataset_to_canonical(dataset: TrackingDataset, match_id: str, source: Source
         "provider_pitch_m": [dims.pitch_length, dims.pitch_width],
         "flipped_periods": sorted(p for p, f in flips.items() if f),
         "rows": len(frames),
-        "rows_dropped_out_of_bounds": n_dropped,
+        "rows_dropped_out_of_bounds": dropped,
     }
     return IngestResult(validate_frames(frames), players, info)

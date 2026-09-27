@@ -118,3 +118,15 @@ def test_score_passes_tolerance_and_one_to_one():
     assert s.matched_true.tolist() == [True, False, False]
     s = score_passes(pred, truth, tol_frames=8)
     assert (s.tp, s.fp, s.fn) == (2, 2, 1)
+
+
+def test_frames_without_ball_have_no_owner_and_owner_is_not_carried_forward():
+    n = 5
+    scene = _scene([(0.0, 0.0)] * n, {"h1": ("home", [(0.0, 0.2)] * n)})
+    # frame 2: ball not tracked at all; frame 3: ball far from everyone
+    scene = scene[~((scene["frame"] == 2) & (scene["team"] == "ball"))]
+    scene.loc[(scene["frame"] == 3) & (scene["team"] == "ball"), "x"] = 20.0
+    owner = ball_owner(scene, radius_m=1.0)
+    assert owner["frame"].tolist() == [0, 1, 2, 3, 4]
+    assert owner["ball_visible"].tolist() == [True, True, False, True, True]
+    assert owner["owner_id"].isna().tolist() == [False, False, True, True, False]

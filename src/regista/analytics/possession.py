@@ -31,11 +31,12 @@ PASS_COLUMNS = [
 def ball_owner(
     frames: pd.DataFrame, radius_m: float, max_ball_speed: float | None = None
 ) -> pd.DataFrame:
-    """One row per frame with a ball position: nearest player, distance, and owner.
+    """One row per frame in ``frames``: nearest player, distance, and owner.
 
-    ``owner_id``/``owner_team`` are NA when nobody is within ``radius_m`` or the
+    ``owner_id``/``owner_team`` are NA when nobody is within ``radius_m``, the
     ball is faster than ``max_ball_speed`` (which needs ball ``vx``/``vy``; a NaN
-    ball speed fails the gate). Frames without a ball row are absent.
+    ball speed fails the gate), or the frame has no ball row. An owner is never
+    carried forward from an earlier frame.
     """
     is_ball = frames["team"] == Team.BALL.value
     ball = frames.loc[is_ball, [*FRAME_KEYS, "x", "y", "vx", "vy"]]
@@ -49,18 +50,27 @@ def ball_owner(
         ball_speed = np.hypot(nearest["vx"], nearest["vy"])
         owned &= ball_speed <= max_ball_speed
 
-    out = nearest[FRAME_KEYS].copy()
-    out["nearest_id"] = nearest["player_id"]
-    out["dist"] = nearest["dist"]
-    out["owner_id"] = nearest["player_id"].where(owned)
-    out["owner_team"] = nearest["team"].where(owned)
+    per_frame = nearest[FRAME_KEYS].copy()
+    per_frame["nearest_id"] = nearest["player_id"]
+    per_frame["dist"] = nearest["dist"]
+    per_frame["owner_id"] = nearest["player_id"].where(owned)
+    per_frame["owner_team"] = nearest["team"].where(owned)
+
+    all_frames = frames[FRAME_KEYS].drop_duplicates()
+    out = all_frames.merge(per_frame, on=FRAME_KEYS, how="left")
+    out["ball_visible"] = (
+        out.merge(ball[FRAME_KEYS].assign(_b=True), on=FRAME_KEYS, how="left")["_b"]
+        .notna()
+        .to_numpy()
+    )
     return out.sort_values(FRAME_KEYS).reset_index(drop=True)
 
 
 def possession_spells(owner: pd.DataFrame, min_hold_frames: int = 1) -> pd.DataFrame:
     """Collapse frame-level ownership into spells of one player holding the ball.
 
-    Unowned frames between two frames of the same owner do not break a spell.
+    Unowned frames (including frames without a ball) between two frames of the
+    same owner do not break a spell; they are not assigned to anyone either.
     Spells shorter than ``min_hold_frames`` are dropped, and neighbours with the
     same owner are then merged.
     """

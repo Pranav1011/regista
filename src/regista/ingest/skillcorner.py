@@ -17,3 +17,10 @@ def load(match_id: str) -> IngestResult:
     """Download one open match and convert it to canonical tables."""
     dataset = skillcorner.load_open_data(match_id=match_id)
     return dataset_to_canonical(dataset, match_id, Source.SKILLCORNER)
+
+
+def ingest(match_id: str) -> IngestResult:
+    """Load one open match and write frames, players, and provenance."""
+    result = load(match_id)
+    result.save()
+    return result

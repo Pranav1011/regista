@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from kloppy import metrica
 
+from regista import io
+from regista.ingest import metrica_events
 from regista.ingest._kloppy import IngestResult, dataset_to_canonical
 from regista.schema import Source
 
@@ -25,3 +27,13 @@ def load(game: int) -> IngestResult:
         raise ValueError(f"Metrica sample game must be one of {GAMES}, got {game}")
     dataset = metrica.load_open_data(match_id=game)
     return dataset_to_canonical(dataset, match_id(game), Source.METRICA)
+
+
+def ingest(game: int) -> IngestResult:
+    """Load one sample game and write frames, players, provenance, and events."""
+    result = load(game)
+    result.save()
+    events = metrica_events.load(game, result.players, result.info["flipped_periods"])
+    io.write_events(events, Source.METRICA, match_id(game))
+    result.info["events"] = len(events)
+    return result
