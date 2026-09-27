@@ -3,12 +3,6 @@
     1,
     2
   ],
-  "possession": {
-    "radius_m": 0.5,
-    "max_ball_speed": 15.0,
-    "min_hold_frames": 2,
-    "max_gap_frames": 125
-  },
   "pass_tolerance_frames": 5,
   "tolerance_curve_f1": {
     "1": 0.5931,
@@ -21,10 +15,38 @@
     "25": 0.9225,
     "50": 0.9225
   },
-  "train_scores": {
-    "precision": 0.924,
-    "recall": 0.9039,
-    "f1": 0.9139
+  "v1": {
+    "possession": {
+      "radius_m": 0.5,
+      "max_ball_speed": 15.0,
+      "min_hold_frames": 2,
+      "max_gap_frames": 125
+    },
+    "train_scores": {
+      "precision": 0.924,
+      "recall": 0.9039,
+      "f1": 0.9139
+    },
+    "grid_size": 480
   },
-  "grid_size": 480
+  "v2": {
+    "radius_quantile": 0.95,
+    "train_radii_m": {
+      "1": 0.858,
+      "2": 0.457
+    },
+    "max_ball_speed": 15.0,
+    "min_hold_frames": 2,
+    "max_gap_frames": 125,
+    "release_speed": 2.0,
+    "release_cos": 0.0,
+    "release_back_s": 0.2,
+    "release_fwd_s": 0.4,
+    "train_scores": {
+      "precision": 0.9101,
+      "recall": 0.8856,
+      "f1": 0.8977
+    },
+    "grid_size": 1800
+  }
 }

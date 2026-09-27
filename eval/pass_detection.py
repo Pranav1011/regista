@@ -1,17 +1,26 @@
 """Score pass detection on the held-out Metrica game 3 and categorise its failures.
 
 Parameters come from eval/params_phase1.json (tuned on games 1-2 only).
-Run: uv run python eval/pass_detection.py
+v2 was designed after the v1 game-3 failure analysis; both stay reproducible.
+Run: uv run python eval/pass_detection.py [--version v1|v2]
 """
 
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 
 import pandas as pd
 from _common import TEST_GAME, load_params, metrica_game, true_passes
 
-from regista.analytics.possession import ball_owner, detect_passes, score_passes
+from regista.analytics.kinematics import frame_interval
+from regista.analytics.possession import (
+    ball_owner,
+    detect_passes,
+    detect_passes_v2,
+    match_radius,
+    score_passes,
+)
 
 CONTEXT_FRAMES = 25  # 1 s at 25 fps, used to describe what surrounds a failure
 
@@ -19,7 +28,9 @@ CONTEXT_FRAMES = 25  # 1 s at 25 fps, used to describe what surrounds a failure
 @dataclass
 class PassEval:
     game: int
-    params: dict
+    version: str
+    params: dict  # the version's parameters
+    radius_m: float
     precision: float
     recall: float
     f1: float
@@ -61,13 +72,40 @@ def _fp_reason(row, events: pd.DataFrame) -> str:
     return f"near a labelled {near.iloc[0]['type']} event, not a PASS"
 
 
-def evaluate(game: int = TEST_GAME) -> PassEval:
+def predict(
+    frames: pd.DataFrame, version: str, params: dict
+) -> tuple[pd.DataFrame, pd.DataFrame, float]:
+    """(owner table, detected passes and turnovers, radius used) for one match."""
+    if version == "v1":
+        pp = params["v1"]["possession"]
+        radius = pp["radius_m"]
+        owner = ball_owner(frames, radius, pp["max_ball_speed"])
+        return owner, detect_passes(owner, pp["min_hold_frames"], pp["max_gap_frames"]), radius
+    if version == "v2":
+        pp = params["v2"]
+        radius = match_radius(frames, pp["radius_quantile"])
+        owner = ball_owner(frames, radius, pp["max_ball_speed"])
+        dt = frame_interval(frames)
+        detected = detect_passes_v2(
+            frames,
+            owner,
+            pp["min_hold_frames"],
+            pp["max_gap_frames"],
+            pp["release_speed"],
+            pp["release_cos"],
+            back_frames=round(pp["release_back_s"] / dt),
+            fwd_frames=round(pp["release_fwd_s"] / dt),
+        )
+        return owner, detected, radius
+    raise ValueError(f"unknown pass detector version {version!r}")
+
+
+def evaluate(version: str, game: int = TEST_GAME) -> PassEval:
     params = load_params()
-    pp, tol = params["possession"], params["pass_tolerance_frames"]
+    tol = params["pass_tolerance_frames"]
     frames, events = metrica_game(game)
     truth = true_passes(events)
-    owner = ball_owner(frames, pp["radius_m"], pp["max_ball_speed"])
-    detected = detect_passes(owner, pp["min_hold_frames"], pp["max_gap_frames"])
+    owner, detected, radius = predict(frames, version, params)
     pred = detected[detected["kind"] == "pass"].reset_index(drop=True)
     score = score_passes(pred, truth, tol)
 
@@ -77,7 +115,9 @@ def evaluate(game: int = TEST_GAME) -> PassEval:
     fp["reason"] = [_fp_reason(r, events) for r in fp.itertuples()]
     return PassEval(
         game=game,
-        params=params,
+        version=version,
+        params=params[version],
+        radius_m=radius,
         precision=score.precision,
         recall=score.recall,
         f1=score.f1,
@@ -104,8 +144,13 @@ def failure_table(ev: PassEval, n_examples: int = 3) -> pd.DataFrame:
 
 
 def main() -> None:
-    ev = evaluate()
-    print(f"Game {ev.game} (held out): P={ev.precision:.3f} R={ev.recall:.3f} F1={ev.f1:.3f}")
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--version", choices=["v1", "v2"], required=True)
+    ev = evaluate(parser.parse_args().version)
+    print(
+        f"{ev.version} game {ev.game} (held out): "
+        f"P={ev.precision:.3f} R={ev.recall:.3f} F1={ev.f1:.3f} (radius {ev.radius_m:.3f} m)"
+    )
     print(f"true passes={ev.n_true}, predicted passes={ev.n_pred}")
     print("train (games 1-2):", ev.params["train_scores"])
     print(failure_table(ev).to_markdown(index=False))

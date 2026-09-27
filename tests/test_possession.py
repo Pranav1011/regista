@@ -4,7 +4,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from regista.analytics.possession import ball_owner, detect_passes, score_passes
+from regista.analytics.possession import (
+    ball_owner,
+    detect_passes,
+    detect_passes_v2,
+    kick_onset_distances,
+    match_radius,
+    score_passes,
+)
 
 
 def _scene(ball_xy, players: dict[str, tuple[str, list]], ball_v=None) -> pd.DataFrame:
@@ -130,3 +137,66 @@ def test_frames_without_ball_have_no_owner_and_owner_is_not_carried_forward():
     assert owner["frame"].tolist() == [0, 1, 2, 3, 4]
     assert owner["ball_visible"].tolist() == [True, True, False, True, True]
     assert owner["owner_id"].isna().tolist() == [False, False, True, True, False]
+
+
+def _kicked_scene(ball_speed_ms: float, direction: float = 1.0) -> pd.DataFrame:
+    """h1 at x=0 holds the ball (frames 0-4), then the ball moves to r at x=10.
+
+    ``direction`` = -1 gives the ball a velocity pointing back at the passer, as a
+    ball rolling in towards him would have.
+    """
+    ball = [(0.0, 0.0)] * 5 + [(2.0 * i, 0.0) for i in range(1, 5)] + [(10.0, 0.0)] * 6
+    v = [(0.0, 0.0)] * 5 + [(direction * ball_speed_ms, 0.0)] * 4 + [(0.0, 0.0)] * 6
+    n = len(ball)
+    players = {"h1": ("home", [(0.0, 0.3)] * n), "r": ("home", [(10.0, 0.3)] * n)}
+    return _scene(ball, players, ball_v=v)
+
+
+V2 = {"min_hold_frames": 1, "max_gap_frames": None, "release_speed": 5.0, "release_cos": 0.5,
+      "back_frames": 2, "fwd_frames": 4}  # fmt: skip
+
+
+def test_v2_keeps_a_kicked_pass_and_starts_it_at_release():
+    scene = _kicked_scene(ball_speed_ms=15.0)
+    passes = detect_passes_v2(scene, ball_owner(scene, radius_m=1.0), **V2)
+    assert passes[["kind", "from_player", "to_player"]].values.tolist() == [["pass", "h1", "r"]]
+    assert passes.loc[0, "start_frame"] == 5  # first frame the ball moves away fast
+
+
+def test_v2_rejects_slow_handoff_and_ball_moving_back_to_passer():
+    slow = _kicked_scene(ball_speed_ms=2.0)
+    assert detect_passes_v2(slow, ball_owner(slow, radius_m=1.0), **V2).empty
+    back = _kicked_scene(ball_speed_ms=15.0, direction=-1.0)
+    assert detect_passes_v2(back, ball_owner(back, radius_m=1.0), **V2).empty
+
+
+def test_v2_keeps_turnovers_ungated():
+    scene = _kicked_scene(ball_speed_ms=2.0)
+    scene.loc[scene["player_id"] == "r", "team"] = "away"
+    passes = detect_passes_v2(scene, ball_owner(scene, radius_m=1.0), **V2)
+    assert passes["kind"].tolist() == ["turnover"]
+
+
+def _kick(start_frame: int, gap_m: float, n: int = 20) -> pd.DataFrame:
+    """Ball resting gap_m from h1, kicked away at 15 m/s from frame 5 of the clip."""
+    ball_x = np.where(np.arange(n) < 5, gap_m, gap_m + 15.0 * (np.arange(n) - 4) / 25)
+    speed = np.where(np.arange(n) < 5, 0.0, 15.0)
+    df = _scene(list(zip(ball_x, np.zeros(n), strict=True)),
+                {"h1": ("home", [(0.0, 0.0)] * n)},
+                ball_v=list(zip(speed, np.zeros(n), strict=True)))  # fmt: skip
+    df["frame"] += start_frame
+    df["t"] = df["frame"] / 25
+    return df
+
+
+def test_kick_onsets_measure_kicker_distance_and_give_match_radius():
+    gaps = [0.1, 0.2, 0.3, 0.4, 1.0]
+    scene = pd.concat([_kick(100 * i, g) for i, g in enumerate(gaps)], ignore_index=True)
+    np.testing.assert_allclose(sorted(kick_onset_distances(scene)), gaps)
+    assert match_radius(scene, quantile=0.5) == pytest.approx(0.3)
+
+
+def test_slow_roll_is_not_a_kick():
+    scene = _kick(0, 0.2)
+    scene.loc[scene["team"] == "ball", "vx"] = scene["vx"].clip(upper=5.0)  # never reaches 7
+    assert kick_onset_distances(scene).empty
