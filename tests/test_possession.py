@@ -11,6 +11,7 @@ from regista.analytics.possession import (
     kick_onset_distances,
     match_radius,
     score_passes,
+    team_in_possession,
 )
 
 
@@ -200,3 +201,20 @@ def test_slow_roll_is_not_a_kick():
     scene = _kick(0, 0.2)
     scene.loc[scene["team"] == "ball", "vx"] = scene["vx"].clip(upper=5.0)  # never reaches 7
     assert kick_onset_distances(scene).empty
+
+
+def test_team_in_possession_holds_between_touches_until_gap():
+    owner = pd.DataFrame(
+        {
+            "match_id": "synthetic",
+            "period": 1,
+            "frame": np.arange(10),
+            "owner_id": ["a", "a", None, None, "b", None, None, None, None, None],
+            "owner_team": ["home", "home", None, None, "away"] + [None] * 5,
+            "ball_visible": [True] * 9 + [False],
+        }
+    )
+    phase = team_in_possession(owner, max_gap_frames=2)
+    assert phase["team"].tolist()[:7] == ["home"] * 4 + ["away"] * 3
+    assert phase["team"].iloc[7:].isna().all()  # gap exceeded; no ball in frame 9
+    assert 9 not in phase["frame"].tolist()

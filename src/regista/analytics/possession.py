@@ -271,6 +271,29 @@ def detect_passes_v2(
     return apply_release_gate(detected, features, release_speed, release_cos)
 
 
+def team_in_possession(owner: pd.DataFrame, max_gap_frames: int) -> pd.DataFrame:
+    """Per frame, the team in possession (a team phase, not a frame-level owner).
+
+    A team is in possession from its spell's first frame until the opponent's
+    next spell starts, but only up to ``max_gap_frames`` after its last touch;
+    beyond that (e.g. ball out of play) the phase is NA. Frames with no ball row
+    are never assigned. Columns: match_id, period, frame, team.
+    """
+    spells = possession_spells(owner).sort_values("first_frame")
+    frames = owner.loc[owner["ball_visible"], FRAME_KEYS].sort_values("frame")
+    merged = pd.merge_asof(
+        frames,
+        spells[["match_id", "period", "first_frame", "last_frame", "team"]],
+        left_on="frame",
+        right_on="first_frame",
+        by=["match_id", "period"],
+        direction="backward",
+    )
+    active = (merged["frame"] - merged["last_frame"]).le(max_gap_frames).fillna(False)
+    merged["team"] = merged["team"].where(active.to_numpy(bool))
+    return merged[[*FRAME_KEYS, "team"]].sort_values(FRAME_KEYS).reset_index(drop=True)
+
+
 @dataclass
 class PassScore:
     tp: int
