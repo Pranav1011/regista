@@ -1,0 +1,30 @@
+{
+  "passes": {
+    "v2_published": 0.8090497737556561,
+    "v2_corrected": 0.9140271493212669,
+    "v1_published": 0.8010825439783491,
+    "v1_corrected": 0.9084348218313035,
+    "swap_events": 210
+  },
+  "pitch_control": {
+    "n_test": 1253,
+    "skill_raw": 0.3839910278718579,
+    "skill_platt": 0.46055505592339474,
+    "skill_isotonic": 0.46382228485719057,
+    "skill_logistic": 0.18716159680025413
+  },
+  "roles": {
+    "matches": 20,
+    "side_template": 0.8185765983112183,
+    "side_thirds": 0.6853437876960193,
+    "group_template": 0.7306393244873342,
+    "group_depth": 0.7238841978287093,
+    "group_diff": 0.006755126658624849,
+    "group_ci_low": -0.005611666845481117,
+    "group_ci_high": 0.02007388527451602
+  },
+  "networks": {
+    "home_published": 0.8096316969205808,
+    "home_corrected": 0.981008460484683
+  }
+}

@@ -136,3 +136,22 @@ unchanged.
 with published-label numbers alongside. The correction is justified by the
 tracking itself, not by model output, and the mismatch check runs in eval so it
 would catch a regression or a new swap.
+
+## ADR-006: Platt scaling, not isotonic, for the displayed pass probability
+
+**Context.** Raw pitch control is underconfident in its upper range, so a
+calibrator fitted on games 1-2 (level (a), labelled pass attempts) maps it to a
+display probability. On held-out game 3, isotonic regression and Platt scaling
+reach nearly the same Brier (0.0518 and 0.0521, against 0.0595 raw;
+`eval/phase1.py`). Isotonic is a step function, and it maps 18 game-3 attempts to
+exactly 0 even though 7 of them were completed.
+
+**Decision.** Display the Platt-calibrated value (`display: "platt"` in
+`eval/calibration_phase1.json`). Raw pitch control stays the model output; the
+isotonic results stay in the report for comparison.
+
+**Consequence.** Displayed probabilities are smooth, strictly between 0 and 1,
+and come from a two-parameter fit that is less prone to overfitting about 2,000
+training attempts. The cost is a Brier difference in the fourth decimal place.
+A calibrated value is still an estimate; the reliability diagram in the report
+shows how well it holds per bin.

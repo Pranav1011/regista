@@ -4,7 +4,7 @@
     2
   ],
   "input": "raw pitch control at labelled pass attempts (level a, default rule)",
-  "display": "isotonic",
+  "display": "platt",
   "isotonic": {
     "kind": "isotonic",
     "x": [

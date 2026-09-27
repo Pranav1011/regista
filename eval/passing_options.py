@@ -18,7 +18,7 @@ over 1-minute blocks. Reliability: 10 equal-width bins with counts.
 
 Also: isotonic and Platt calibrators fitted on games 1-2 at level (a), saved to
 eval/calibration_phase1.json (raw pitch control stays the model output; the
-isotonic value is the display probability); failed-pass rule sensitivity at
+Platt value is the display probability; see DESIGN.md ADR-006); failed-pass rule sensitivity at
 level (a); and the composition of level (b)'s failures, with level (b) scored
 with and without tackles and lost dribbles.
 
@@ -374,7 +374,7 @@ def evaluate() -> dict:
             {
                 "fitted_on": list(TRAIN_GAMES),
                 "input": "raw pitch control at labelled pass attempts (level a, default rule)",
-                "display": "isotonic",
+                "display": "platt",
                 "isotonic": isotonic.to_dict(),
                 "platt": platt.to_dict(),
             },
