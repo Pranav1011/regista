@@ -11,14 +11,13 @@ import argparse
 from dataclasses import dataclass
 
 import pandas as pd
-from _common import TEST_GAME, load_params, metrica_game, true_passes
+from _common import TEST_GAME, load_params, metrica_game, true_passes, v2_owner
 
 from regista.analytics.kinematics import frame_interval
 from regista.analytics.possession import (
     ball_owner,
     detect_passes,
     detect_passes_v2,
-    match_radius,
     score_passes,
 )
 
@@ -83,8 +82,7 @@ def predict(
         return owner, detect_passes(owner, pp["min_hold_frames"], pp["max_gap_frames"]), radius
     if version == "v2":
         pp = params["v2"]
-        radius = match_radius(frames, pp["radius_quantile"])
-        owner = ball_owner(frames, radius, pp["max_ball_speed"])
+        owner, radius = v2_owner(frames, params)
         dt = frame_interval(frames)
         detected = detect_passes_v2(
             frames,

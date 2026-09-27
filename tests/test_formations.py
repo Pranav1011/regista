@@ -9,6 +9,9 @@ from regista.analytics.formations import (
     change_points,
     classify_shape,
     detect_formations,
+    label_stability,
+    role_consistency,
+    template_costs,
     window_shapes,
 )
 
@@ -33,6 +36,12 @@ def test_noisy_templates_are_recovered(name):
         roles = [s.role for s in match.slots]
         assert roles == [TEMPLATES[name][i].role for i in perm]
         assert 0.0 < match.confidence <= 1.0
+        assert match.runner_up != name
+        assert match.margin == pytest.approx(match.runner_up_cost - match.cost)
+        assert match.margin > 0
+        costs = template_costs(xy[perm])
+        assert min(costs, key=costs.get) == name
+        assert costs[match.runner_up] == pytest.approx(match.runner_up_cost)
 
 
 def test_wrong_number_of_players_rejected():
@@ -94,3 +103,38 @@ def test_change_point_needs_two_consecutive_windows():
     assert cps[["from_label", "to_label", "t_start"]].values.tolist() == [
         ["4-4-2", "3-5-2", 1200.0]
     ]
+
+
+def test_label_stability_counts_unchanged_consecutive_windows():
+    labels = ["4-4-2", "4-4-2", None, "4-3-3", "4-3-3", "4-3-3"]
+    formations = pd.DataFrame(
+        {
+            "match_id": "synthetic",
+            "team": "home",
+            "phase": "in",
+            "period": 1,
+            "window": range(len(labels)),
+            "label": pd.array(labels, dtype="string"),
+        }
+    )
+    st = label_stability(formations).iloc[0]
+    # labelled sequence 442, 442, 433, 433, 433 -> 4 pairs, 3 unchanged
+    assert (st["pairs"], st["unchanged"]) == (4, 3)
+    assert st["stability"] == pytest.approx(0.75)
+
+
+def test_role_consistency_is_modal_share():
+    roles = pd.DataFrame(
+        {
+            "match_id": "synthetic",
+            "team": "home",
+            "phase": "in",
+            "player_id": ["p1"] * 4 + ["p2"] * 2,
+            "role": ["LB", "LB", "LB", "LWB", "ST", "ST"],
+            "group": ["DEF", "DEF", "DEF", "MID", "FWD", "FWD"],
+        }
+    )
+    rc = role_consistency(roles).set_index("player_id")
+    assert rc.loc["p1", "modal_role"] == "LB"
+    assert rc.loc["p1", "role_consistency"] == pytest.approx(0.75)
+    assert rc.loc["p2", "role_consistency"] == pytest.approx(1.0)

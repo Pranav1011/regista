@@ -55,20 +55,29 @@ def test_wide_to_long_drops_missing_objects_and_is_valid():
     assert frames["t"].max() == pytest.approx(0.08)
 
 
-def _kickoff_frames(home_x: float, period: int) -> pd.DataFrame:
+def _period_frames(home_gk_x: float, period: int, away_gk_x: float | None = None) -> pd.DataFrame:
+    """Two frames of a period: each team's GK at depth, outfielders near halfway."""
+    away_gk_x = -home_gk_x if away_gk_x is None else away_gk_x
     rows = []
-    for i, pid in enumerate(["h1", "h2", "h3"]):
-        rows.append({"player_id": pid, "team": "home", "x": home_x + i, "y": 5.0 * i})
-    rows.append({"player_id": "a1", "team": "away", "x": -home_x, "y": 0.0})
+    for f in range(2):
+        rows += [
+            {"player_id": "h_gk", "team": "home", "x": home_gk_x, "y": 0.0},
+            {"player_id": "h1", "team": "home", "x": 3.0, "y": 10.0},  # across halfway
+            {"player_id": "h2", "team": "home", "x": -np.sign(home_gk_x) * 5, "y": -8.0},
+            {"player_id": "a_gk", "team": "away", "x": away_gk_x, "y": 0.0},
+            {"player_id": "a1", "team": "away", "x": 1.0, "y": 0.0},
+        ]
+        for r in rows[-5:]:
+            r["frame"] = f
     df = pd.DataFrame(rows)
     df["period"] = period
-    df["t"] = 0.0
+    df["t"] = df["frame"] * 0.04
     return df
 
 
-def test_direction_inferred_and_normalised():
-    # period 1: home stands in the -x half (attacks +x); period 2: home in +x half.
-    frames = pd.concat([_kickoff_frames(-20.0, 1), _kickoff_frames(20.0, 2)], ignore_index=True)
+def test_direction_inferred_from_goalkeepers_and_normalised():
+    # period 1: home GK defends -x (home attacks +x); period 2: sides swapped.
+    frames = pd.concat([_period_frames(-45.0, 1), _period_frames(45.0, 2)], ignore_index=True)
     frames["vx"] = 1.0
     frames["vy"] = -2.0
     flips = home_attack_flips(frames)
@@ -79,15 +88,17 @@ def test_direction_inferred_and_normalised():
     np.testing.assert_allclose(p2_out[["x", "y"]], -p2_in[["x", "y"]])
     np.testing.assert_allclose(p2_out[["vx", "vy"]], [[-1.0, 2.0]] * len(p2_out))
     pd.testing.assert_frame_equal(out[out["period"] == 1], frames[frames["period"] == 1])
-    home = out[out["team"] == "home"]
-    assert (home.groupby("period")["x"].median() < 0).all()
+    gk = out[out["player_id"] == "h_gk"]
+    assert (gk.groupby("period")["x"].mean() < 0).all()
 
 
 def test_ambiguous_direction_raises():
-    frames = _kickoff_frames(0.0, 1)
-    frames["x"] = 0.0
+    same_side = _period_frames(-45.0, 1, away_gk_x=-40.0)
     with pytest.raises(ValueError, match="cannot infer attacking direction"):
-        home_attack_flips(frames)
+        home_attack_flips(same_side)
+    too_shallow = _period_frames(-10.0, 1)
+    with pytest.raises(ValueError, match="cannot infer attacking direction"):
+        home_attack_flips(too_shallow)
 
 
 def test_drop_out_of_bounds_counts_ball_and_player_rows():

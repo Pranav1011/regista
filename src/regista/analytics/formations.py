@@ -84,25 +84,48 @@ _TEMPLATE_SHAPES = {
 class ShapeMatch:
     label: str
     cost: float  # mean squared distance to the matched template slots (unit shape)
-    confidence: float  # (runner-up cost - best cost) / runner-up cost, in [0, 1]
+    runner_up: str  # second-best template
+    runner_up_cost: float
     slots: list[Slot]  # matched slot per input player, in input order
 
+    @property
+    def margin(self) -> float:
+        """Absolute cost gap to the runner-up (unit-shape squared distance)."""
+        return self.runner_up_cost - self.cost
 
-def classify_shape(xy: np.ndarray) -> ShapeMatch:
-    """Match 10 outfield positions (attacking frame) to the best template."""
-    if xy.shape != (N_OUTFIELD, 2):
-        raise ValueError(f"expected {N_OUTFIELD} outfield positions, got shape {xy.shape}")
-    shape = unit_shape(xy)
-    results = []
+    @property
+    def confidence(self) -> float:
+        """Relative cost margin over the runner-up, in [0, 1]."""
+        return self.margin / self.runner_up_cost if self.runner_up_cost > 0 else 0.0
+
+
+def _assign(shape: np.ndarray) -> dict[str, tuple[float, list[int]]]:
+    """Per template: (mean squared distance, slot index per player) after optimal assignment."""
+    out = {}
     for name, template in _TEMPLATE_SHAPES.items():
         cost = ((shape[:, None, :] - template[None, :, :]) ** 2).sum(axis=2)
         rows, cols = linear_sum_assignment(cost)
         slot_of = dict(zip(rows, cols, strict=True))
-        results.append((cost[rows, cols].mean(), name, [slot_of[i] for i in range(N_OUTFIELD)]))
-    results.sort(key=lambda r: r[0])
-    (best, label, cols), (second, _, _) = results[0], results[1]
-    confidence = (second - best) / second if second > 0 else 0.0
-    return ShapeMatch(label, float(best), float(confidence), [TEMPLATES[label][c] for c in cols])
+        out[name] = (float(cost[rows, cols].mean()), [slot_of[i] for i in range(N_OUTFIELD)])
+    return out
+
+
+def _check(xy: np.ndarray) -> np.ndarray:
+    if xy.shape != (N_OUTFIELD, 2):
+        raise ValueError(f"expected {N_OUTFIELD} outfield positions, got shape {xy.shape}")
+    return unit_shape(xy)
+
+
+def template_costs(xy: np.ndarray) -> dict[str, float]:
+    """Assignment cost of 10 outfield positions (attacking frame) against every template."""
+    return {name: cost for name, (cost, _) in _assign(_check(xy)).items()}
+
+
+def classify_shape(xy: np.ndarray) -> ShapeMatch:
+    """Match 10 outfield positions (attacking frame) to the best template."""
+    ranked = sorted(_assign(_check(xy)).items(), key=lambda kv: kv[1][0])
+    (label, (best, cols)), (runner_up, (second, _)) = ranked[0], ranked[1]
+    return ShapeMatch(label, best, runner_up, second, [TEMPLATES[label][c] for c in cols])
 
 
 def to_attacking_frame(frames: pd.DataFrame) -> pd.DataFrame:
@@ -181,9 +204,11 @@ def detect_formations(shapes: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]
     """Classify each window's shape.
 
     Returns (formations, roles). ``formations`` has one row per
-    team/period/phase/window with ``label``, ``cost``, ``confidence``; windows
-    without exactly 10 outfield players get label NA. ``roles`` has one row per
-    player per window with ``role`` and ``group``.
+    team/period/phase/window with ``label``, ``cost``, ``runner_up``,
+    ``runner_up_cost``, ``margin``, ``confidence`` and ``cost_<template>`` for
+    every template; windows without exactly
+    10 outfield players get label NA. ``roles`` has one row per player per
+    window with ``role`` and ``group``.
     """
     keys = ["match_id", "period", "team", "phase", "window"]
     form_rows, role_rows = [], []
@@ -191,15 +216,26 @@ def detect_formations(shapes: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]
         base = dict(zip(keys, key, strict=True))
         base.update(t_start=g["t_start"].iat[0], t_end=g["t_end"].iat[0])
         if len(g) != N_OUTFIELD:
-            form_rows.append({**base, "label": None, "cost": np.nan, "confidence": np.nan})
+            form_rows.append({**base, "label": None, "runner_up": None})
             continue
-        match = classify_shape(g[["x", "y"]].to_numpy())
+        xy = g[["x", "y"]].to_numpy()
+        match = classify_shape(xy)
+        costs = {f"cost_{name}": c for name, c in template_costs(xy).items()}
         form_rows.append(
-            {**base, "label": match.label, "cost": match.cost, "confidence": match.confidence}
+            {
+                **base,
+                **costs,
+                "label": match.label,
+                "cost": match.cost,
+                "runner_up": match.runner_up,
+                "runner_up_cost": match.runner_up_cost,
+                "margin": match.margin,
+                "confidence": match.confidence,
+            }
         )
         for pid, slot in zip(g["player_id"], match.slots, strict=True):
             role_rows.append({**base, "player_id": pid, "role": slot.role, "group": slot.group})
-    formations = pd.DataFrame(form_rows).astype({"label": "string"})
+    formations = pd.DataFrame(form_rows).astype({"label": "string", "runner_up": "string"})
     return formations, pd.DataFrame(role_rows)
 
 
@@ -235,3 +271,45 @@ def change_points(formations: pd.DataFrame, min_windows: int = 2) -> pd.DataFram
             else:
                 i += 1
     return pd.DataFrame(rows, columns=[*order, "period", "t_start", "from_label", "to_label"])
+
+
+def label_stability(formations: pd.DataFrame) -> pd.DataFrame:
+    """Share of consecutive labelled windows with an unchanged label (label-free metric).
+
+    Per match/team/phase, windows are ordered in time across periods; windows
+    without a label are skipped. Columns: pairs, unchanged, stability.
+    """
+    rows = []
+    order = ["match_id", "team", "phase"]
+    for key, g in formations.dropna(subset=["label"]).groupby(order):
+        labels = g.sort_values(["period", "window"])["label"].to_numpy()
+        pairs = len(labels) - 1
+        unchanged = int((labels[1:] == labels[:-1]).sum()) if pairs > 0 else 0
+        rows.append(
+            {
+                **dict(zip(order, key, strict=True)),
+                "pairs": pairs,
+                "unchanged": unchanged,
+                "stability": unchanged / pairs if pairs > 0 else np.nan,
+            }
+        )
+    return pd.DataFrame(rows, columns=[*order, "pairs", "unchanged", "stability"])
+
+
+def role_consistency(roles: pd.DataFrame) -> pd.DataFrame:
+    """Per player and phase: share of windows spent in their most frequent role and group.
+
+    Columns: windows, modal_role, role_consistency, modal_group, group_consistency.
+    """
+    keys = ["match_id", "team", "phase", "player_id"]
+    g = roles.groupby(keys)
+    out = pd.DataFrame(
+        {
+            "windows": g.size(),
+            "modal_role": g["role"].agg(lambda s: s.value_counts().index[0]),
+            "role_consistency": g["role"].agg(lambda s: s.value_counts().iloc[0] / len(s)),
+            "modal_group": g["group"].agg(lambda s: s.value_counts().index[0]),
+            "group_consistency": g["group"].agg(lambda s: s.value_counts().iloc[0] / len(s)),
+        }
+    )
+    return out.reset_index()

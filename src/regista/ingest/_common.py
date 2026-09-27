@@ -20,8 +20,8 @@ from regista.schema import (
     coerce_frames,
 )
 
-KICKOFF_WINDOW_S = 1.0  # players are in their own half at the start of each period
-MIN_KICKOFF_OFFSET_M = 1.0  # below this the attacking direction is ambiguous
+MIN_GK_PRESENCE = 0.5  # share of a period's frames a goalkeeper candidate must appear in
+MIN_GK_DEPTH_M = 20.0  # goalkeepers closer to halfway than this make direction ambiguous
 
 
 def to_metres(
@@ -69,23 +69,33 @@ def wide_to_long(
     return coerce_frames(frames)
 
 
+def _goalkeeper_x(team_rows: pd.DataFrame) -> float:
+    """Mean x of the team's deepest regular player (its goalkeeper) over a period."""
+    n_frames = team_rows["frame"].nunique()
+    presence = team_rows.groupby("player_id")["frame"].nunique() / n_frames
+    mean_x = team_rows.groupby("player_id")["x"].mean()[presence >= MIN_GK_PRESENCE]
+    return float(mean_x.loc[mean_x.abs().idxmax()])
+
+
 def home_attack_flips(frames: pd.DataFrame) -> dict[int, bool]:
     """Per period, True if the home team attacks -x and must be flipped.
 
-    Inferred from the data: at kick-off every player stands in their own half, so
-    the home players' median x is negative when home attacks +x.
+    Inferred from the data: each team's goalkeeper (its deepest regular player)
+    stays in the half it defends. Kick-off positions are not used because
+    broadcast tracking extrapolates some players across the halfway line there.
+    Raises if the two goalkeepers are not clearly on opposite sides.
     """
-    home = frames[frames["team"] == Team.HOME.value]
     flips: dict[int, bool] = {}
-    for period, g in home.groupby("period"):
-        kickoff = g[g["t"] <= g["t"].min() + KICKOFF_WINDOW_S]
-        median_x = float(kickoff["x"].median())
-        if not np.isfinite(median_x) or abs(median_x) < MIN_KICKOFF_OFFSET_M:
+    for period, g in frames.groupby("period"):
+        home_gk = _goalkeeper_x(g[g["team"] == Team.HOME.value])
+        away_gk = _goalkeeper_x(g[g["team"] == Team.AWAY.value])
+        clear = min(abs(home_gk), abs(away_gk)) >= MIN_GK_DEPTH_M
+        if not clear or np.sign(home_gk) == np.sign(away_gk):
             raise ValueError(
                 f"period {period}: cannot infer attacking direction "
-                f"(home median x at kick-off = {median_x:.2f} m)"
+                f"(goalkeeper mean x: home {home_gk:.1f} m, away {away_gk:.1f} m)"
             )
-        flips[int(period)] = median_x > 0
+        flips[int(period)] = home_gk > 0
     return flips
 
 
