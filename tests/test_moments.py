@@ -88,3 +88,22 @@ def test_output_up_to_t_is_identical_without_later_data(cut):
     full_m, cut_m = moments_upto(full_w), moments_upto(cut_w)
     assert not full_m.empty  # the check is not vacuous
     pd.testing.assert_frame_equal(full_m, cut_m)
+
+
+def test_windows_hold_only_their_own_period():
+    frames = make_match(MatchSpec(**FAST))
+    w = stream_windows(frames, PARAMS)
+    ends = frames.groupby("period")["t"].max()
+    for r in w.itertuples():
+        # a window's data can only come from [t_start, min(t_end, period end)] of its period
+        assert r.coverage_s <= min(r.t_end, ends[r.period] + 1.0) - r.t_start + 1e-6
+
+
+def test_nothing_triggers_until_enough_of_the_new_period_is_seen():
+    # away switches to a back five exactly at half-time
+    five_after_break = lambda p, t: "5-3-2" if p == 2 else "4-4-2"  # noqa: E731
+    m = _moments(MatchSpec(**FAST, away_formation=five_after_break))
+    hits = m[m["type"] == "back_line_change"]
+    assert len(hits) == 1 and hits["period"].iat[0] == 2
+    earliest = CFG.min_coverage_min * 60 + (CFG.persistence_min - 1) * CFG.step_s
+    assert hits["emit_t"].iat[0] >= earliest

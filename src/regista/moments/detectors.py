@@ -3,9 +3,11 @@
 Each detector keeps a reference state per team and fires when the window value
 departs from it consistently for ``persistence_min`` minutes (consecutive
 1-minute steps within one period); the reference then moves to the new state.
+Only windows holding at least ``min_coverage_min`` minutes of in-period data
+are used, so just after a restart (and in a short final window) nothing can
+trigger until enough of the new period has been seen.
 The reference carries over half-time, so a change at the break is detected
-early in the second half. Only complete
-windows (a full ``window_s`` of data) are used.
+early in the second half.
 
 - back_line_change: out-of-possession back-line count differs from the
   reference, every window in the run has a template margin of at least
@@ -39,6 +41,7 @@ MOMENT_TYPES = ("back_line_change", "press_change", "line_height_shift")
 @dataclass(frozen=True)
 class DetectorConfig:
     persistence_min: int = 3
+    min_coverage_min: float = 5.0  # in-period data a window needs before it can trigger
     min_margin: float = 0.03
     press_delta: float = 0.12
     line_delta_m: float = 5.0
@@ -193,7 +196,8 @@ _DETECTORS = {"back_line_change": _BackLine, "press_change": _Press, "line_heigh
 def detect_moments(windows: pd.DataFrame, config: DetectorConfig | None = None) -> pd.DataFrame:
     """Run every detector over stream windows in time order; returns one row per moment."""
     cfg = config or DetectorConfig()
-    complete = windows[windows["complete"]].sort_values(["period", "t_end", "team"])
+    usable = windows["coverage_s"] >= cfg.min_coverage_min * 60 - 1e-6
+    complete = windows[usable].sort_values(["period", "t_end", "team"])
     teams = complete["team"].unique()
     state = {(kind, team): cls(kind, team, cfg) for kind, cls in _DETECTORS.items()
              for team in teams}  # fmt: skip

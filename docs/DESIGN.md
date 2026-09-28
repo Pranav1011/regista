@@ -177,8 +177,67 @@ radius. StatsBomb's radius "varies as errors by the opponent would prove more
 costly, with a maximum range of ten-yards", so pressure near the defending
 team's goal (and on goalkeepers) is undercounted here. It ignores velocities and
 cover shadows. As a sanity check only, per-window press intensity correlates
-weakly with CHALLENGE + RECOVERY counts on Metrica games 1-3 (pooled Spearman
-0.296 over 119 windows, `eval/pressing_sanity.py`); that is not an accuracy
-figure. Future work: Bekkers (2025), "Pressing Intensity: An Intuitive Measure
+with CHALLENGE + RECOVERY on Metrica games 1-3: pooled Spearman 0.296 over 119
+windows for raw counts, and 0.517 when counts are normalised per minute of
+opponent possession (0.667, 0.542, 0.301 for games 1, 2, 3;
+`eval/pressing_sanity.py`). That is not an accuracy figure. Future work: Bekkers (2025), "Pressing Intensity: An Intuitive Measure
 for Pressing in Soccer" (arXiv:2501.04712), which models time-to-intercept with
 velocities and reaction times, would replace the fixed radius.
+
+## ADR-008: Causal streaming detectors with frozen thresholds
+
+**Context.** Alerts in the viewer and the agent must be "live": a detector may
+use only data up to the current time. Thresholds must come from the design games
+(Metrica 1-2) and hit a readable rate of about 4-8 alerts per match.
+
+**Decision.**
+- **Causal windows.** `moments/engine.py` walks each period in 1-minute chunks.
+  At each chunk end it has seen only earlier rows: kinematics are recomputed per
+  chunk with 1 s of past context, and the ball owner uses a radius estimated
+  from the kick onsets seen so far (the frozen v1 radius, 0.5 m, is the prior
+  until 30 onsets). Features cover the trailing 5 minutes. Windows never contain
+  frames from two periods. Tests check that output up to any time is identical
+  with or without later data.
+- **Persistence in minutes.** On rolling windows (5-minute windows, 1-minute
+  steps) the out-of-possession back line is unchanged from one step to the next
+  93.6% of the time, but a third of its runs last 2 minutes or less
+  (`eval/rolling_stability.py`). A change must hold for 3 minutes within a
+  period. The reference state carries over half-time.
+- **Coverage after a restart.** A window can trigger only once it holds at least
+  4 minutes of in-period data. N was set on games 1-2, without re-tuning the
+  thresholds, as the smallest coverage whose windows are no noisier than full
+  windows (median step-to-step change in press intensity and line height, and
+  back-line flip rate, each within 10% of the full-window values); only 12
+  windows had 4 minutes of coverage, so the evidence for 4 over 5 is thin.
+- **Thresholds** (`eval/tune_moments.py`, games 1-2): back-line change needs a
+  template margin of at least 0.055, press change 0.27, line-height shift 14 m.
+  Each was chosen for about 2 alerts per match per type. After an alert a
+  detector is refractory for one window length, so one transition gives one
+  alert.
+- **Press-threshold sensitivity** (games 1-2, alerts per match):
+  0.10 -> 11.5, 0.15 -> 7.5, 0.20 -> 5.5, 0.25 -> 3.5, 0.26 -> 2.5,
+  0.27 -> 1.5, 0.28 -> 0.5, 0.30 -> 0.5, 0.40 -> 0.5. The frozen value sits just
+  before a cliff: small shifts in the data can halve or double the press alerts.
+
+  ![Press-change alert rate vs threshold](img/phase2/press_threshold_sensitivity.png)
+
+**Consequence.**
+- **Latency.** Measured on synthetic matches with a known change time, alerts
+  arrive 6 (back line), 4 (press), and 5 (line height) minutes after the change,
+  with the start estimated within 1.5 minutes (`eval/synthetic_latency.py`).
+  On real matches there is no known onset: "emit minus estimated start" is
+  about 4.5 minutes by construction and says nothing about accuracy.
+- **Rates.** 7 and 5 alerts on the design games; 2 on held-out game 3; a median
+  of 10 (range 4-17) on the 20 SkillCorner matches, with 4 matches above the
+  reporting threshold of 12 (every alert is kept; the viewer ranks by severity).
+  Line-height shifts dominate on SkillCorner: its out-of-possession line height
+  moves about 38% more over 5 minutes than Metrica's (median 9.6 m vs 7.0 m).
+  Broadcast extrapolation does not explain this: only 57% of out-of-possession
+  player positions are detected, but the 5-minute line change is unrelated to the
+  detected share (Spearman -0.011, `eval/skillcorner_detection.py`). The cause is
+  open; thresholds were not changed.
+- **One re-run of the held-out matches.** The coverage rule and the stoppage-time
+  clock (45+m:ss) were added after the first held-out run, which showed a
+  first-half stoppage alert as "47:00". Game 3 and the SkillCorner matches were
+  re-run once with the thresholds unchanged; the numbers above are from that
+  re-run.

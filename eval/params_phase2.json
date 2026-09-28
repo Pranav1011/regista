@@ -12,6 +12,7 @@
   },
   "detectors": {
     "persistence_min": 3,
+    "min_coverage_min": 4.0,
     "min_margin": 0.055,
     "press_delta": 0.27,
     "line_delta_m": 14.0,
@@ -19,6 +20,40 @@
     "step_s": 60.0
   },
   "target_per_type": 2.0,
+  "coverage_noise": [
+    {
+      "coverage_min": 2,
+      "windows": 8,
+      "d_press": 0.04205758909502849,
+      "d_line": 5.488349999999993,
+      "flip_rate": 0.25,
+      "no_noisier_than_full": false
+    },
+    {
+      "coverage_min": 3,
+      "windows": 8,
+      "d_press": 0.04907681961850463,
+      "d_line": 2.2354499999999966,
+      "flip_rate": 0.0,
+      "no_noisier_than_full": false
+    },
+    {
+      "coverage_min": 4,
+      "windows": 12,
+      "d_press": 0.032863837319931616,
+      "d_line": 1.738274999999998,
+      "flip_rate": 0.0,
+      "no_noisier_than_full": true
+    },
+    {
+      "coverage_min": 5,
+      "windows": 350,
+      "d_press": 0.037213013276159335,
+      "d_line": 2.5168500000000034,
+      "flip_rate": 0.07714285714285714,
+      "no_noisier_than_full": true
+    }
+  ],
   "train_alerts_per_match": {
     "1": 7,
     "2": 5

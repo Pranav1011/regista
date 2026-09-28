@@ -7,6 +7,11 @@ owner uses a radius estimated from kick onsets seen so far, and window features
 cover ``[t_end - window_s, t_end)``. Output up to any time is therefore
 identical whether or not later data exists.
 
+Windows never contain frames from two periods: each period is processed
+separately and its buffers start empty. ``coverage_s`` records how much in-period
+data a window holds; it is short just after a restart and in the last window of
+a period.
+
 Window features per team: out-of-possession and in-possession formation label,
 runner-up, margin and back-line count; press intensity (as the pressing team);
 median defensive line height out of possession.
@@ -102,10 +107,14 @@ def stream_windows(frames: pd.DataFrame, params: dict, config: StreamConfig | No
             shape = pd.concat(buf_shape)
             shape = shape[shape["t"] >= t_start]
             last_frame = int(wf["frame"].max())
+            # in-period data this window actually holds (short at period starts and ends)
+            times = np.unique(wf["t"].to_numpy())
+            coverage_s = float(times[-1] - times[0] + np.median(np.diff(times)))
             for team in TEAMS:
                 row = {"match_id": match_id, "period": int(period), "t_start": t_start,
                        "t_end": t_end, "emit_frame": last_frame,
-                       "complete": t_end - cfg.window_s >= 0, "team": team,
+                       "complete": t_end - cfg.window_s >= 0, "coverage_s": coverage_s,
+                       "team": team,
                        "radius_m": radius}  # fmt: skip
                 for phase_name in ("out", "in"):
                     f = forms[(forms["team"] == team) & (forms["phase"] == phase_name)]
