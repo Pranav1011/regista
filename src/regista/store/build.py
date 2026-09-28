@@ -11,6 +11,8 @@ Tables:
 - ``formations`` / ``roles``: formation windows with runner-up and margins
 - ``shape_windows``: team shape medians per window and phase
 - ``network_nodes`` / ``network_edges``: full-match pass network per team
+- ``pressure``: per carrier frame, nearest defender and defenders within 5 yd
+- ``press_windows``: press intensity per pressing team, window, and pitch third
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from regista.analytics.kinematics import frame_interval
 from regista.analytics.pass_network import node_positions, pass_edges
 from regista.analytics.passing_options import build_scene, default_params, passing_options
 from regista.analytics.possession import team_in_possession
+from regista.analytics.pressing import press_windows, pressure_frames
 from regista.analytics.shape import goalkeepers, shape_windows, team_shape
 from regista.pipeline import (
     detect,
@@ -107,6 +110,7 @@ def compute_tables(
     shapes = window_shapes(frames, phase, window_s, window_s)
     formations, roles = detect_formations(shapes)
     nodes = node_positions(frames, phase)
+    pressure = pressure_frames(frames, owner)
     edges = pass_edges(detected[detected["kind"] == "pass"])
     return {
         "frames": frames,
@@ -119,6 +123,8 @@ def compute_tables(
         "shape_windows": shape_windows(team_shape(frames), phase, window_s),
         "network_nodes": nodes,
         "network_edges": edges,
+        "pressure": pressure,
+        "press_windows": press_windows(pressure, window_s),
         "_radius": pd.DataFrame({"radius_m": [radius]}),
     }
 

@@ -155,3 +155,30 @@ and come from a two-parameter fit that is less prone to overfitting about 2,000
 training attempts. The cost is a Brier difference in the fourth decimal place.
 A calibrated value is still an estimate; the reliability diagram in the report
 shows how well it holds per bin.
+
+## ADR-007: Pressing thresholds fixed a priori, after StatsBomb's pressure definition
+
+**Context.** Pressing has no ground truth in the open data, so thresholds cannot
+be validated and must not be tuned.
+
+**Decision.** A carrier (the frame-level ball owner) is **under pressure** when
+an opponent is within 5 yd (4.572 m), following StatsBomb's pressure event,
+which "is triggered when a player is within a five-yard radius of an opponent in
+possession" (Will Morgan, "How StatsBomb Data Helps Measure Counter-Pressing",
+StatsBomb, 20 May 2018,
+<https://blogarchive.statsbomb.com/articles/soccer/how-statsbomb-data-helps-measure-counter-pressing/>).
+A secondary **tight pressure** metric uses 2 m. Defenders are counted within
+4.572 m. Press intensity per window is the share of opponent-carrier frames under
+pressure, overall and by pitch third from the pressing team's point of view.
+These values were set before looking at any data and are not tuned.
+
+**Consequence.** The metric is simple and explainable, but it is a fixed
+radius. StatsBomb's radius "varies as errors by the opponent would prove more
+costly, with a maximum range of ten-yards", so pressure near the defending
+team's goal (and on goalkeepers) is undercounted here. It ignores velocities and
+cover shadows. As a sanity check only, per-window press intensity correlates
+weakly with CHALLENGE + RECOVERY counts on Metrica games 1-3 (pooled Spearman
+0.296 over 119 windows, `eval/pressing_sanity.py`); that is not an accuracy
+figure. Future work: Bekkers (2025), "Pressing Intensity: An Intuitive Measure
+for Pressing in Soccer" (arXiv:2501.04712), which models time-to-intercept with
+velocities and reaction times, would replace the fixed radius.
