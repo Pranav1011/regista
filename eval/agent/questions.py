@@ -382,8 +382,15 @@ def paraphrases(qs: list[Question]) -> list[Question]:
 
 
 def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max, rng) -> None:
-    """Questions that assert something the data contradicts."""
+    """Questions that assert something the data contradicts.
+
+    Premise-validity thresholds (the premise must be clearly false, not borderline)
+    were set from the data definitions, without reference to model outputs.
+    """
     other = {"home": "away", "away": "home"}
+    store = toolbox._match(match).store
+    two_periods = sorted(int(p) for p in store.manifest["periods"]) == [1, 2]
+    moment_rows = store.table("moments")
 
     def fp(template, question, gold, tools, gold_range=None):
         add(
@@ -398,8 +405,13 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
 
     # 1. a switch to a back five that never happened
     out = formations[formations["phase"] == "out"]
+    stream = store.table("stream_windows")
     for team in TEAMS:
-        if not (out[out["team"] == team]["label"].str.startswith("5")).any():
+        # no 5-at-the-back label in any window, and the streaming back-line count never 5
+        if (
+            not (out[out["team"] == team]["label"].str.startswith("5")).any()
+            and not (stream.loc[stream["team"] == team, "back_line_out"] == 5).any()
+        ):
             clock = rng.choice(["55:00", "62:00", "70:00"])
             fp(
                 "fp_back_five",
@@ -424,13 +436,17 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
                 },
                 [["find_moments"]],
             )
-    # 3. extra time that does not exist
-    fp(
-        "fp_extra_time",
-        "Why did the home team drop deep during extra time?",
-        {"must_mention_any": ["extra time", "90", "no"], "truth": "the match had no extra time"},
-        [["get_match_overview"], ["get_team_dimensions"], ["get_formation"]],
-    )
+    # 3. extra time that does not exist ("extra time" alone often means stoppage time)
+    if two_periods:
+        fp(
+            "fp_extra_time",
+            "Why did the home team drop deep in the first period of extra time?",
+            {
+                "must_mention_any": ["extra time", "90", "no"],
+                "truth": "the match had no extra time; it has two periods",
+            },
+            [["get_match_overview"], ["get_team_dimensions"], ["get_formation"]],
+        )
     # 4. the wrong formation for a clear window
     clear = formations[formations["margin"] >= formations["margin"].median()]
     if len(clear):
@@ -454,10 +470,14 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
         )
     # 5. the weaker pressing team said to press harder
     vals = {
-        t: toolbox.get_press_stats(match, t, "60:00", None).by_third[0].press_intensity
+        t: next(
+            b.press_intensity
+            for b in toolbox.get_press_stats(match, t, "60:00", None).by_third
+            if b.third == "all"
+        )
         for t in TEAMS
     }
-    if None not in vals.values() and abs(vals["home"] - vals["away"]) >= 0.02:
+    if None not in vals.values() and abs(vals["home"] - vals["away"]) >= 0.05:
         weak, strong = sorted(TEAMS, key=vals.get)
         fp(
             "fp_press_harder",
@@ -466,11 +486,12 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
             [["get_press_stats"]],
         )
     # 6. the lower line said to be higher
+    first_half_end = match_clock(1, t_max[1])  # the whole first period, stoppage included
     vals = {
-        t: toolbox.get_team_dimensions(match, t, "out", "00:00", "45:00").line_height_m
+        t: toolbox.get_team_dimensions(match, t, "out", "00:00", first_half_end).line_height_m
         for t in TEAMS
     }
-    if None not in vals.values() and abs(vals["home"] - vals["away"]) >= 1.0:
+    if None not in vals.values() and abs(vals["home"] - vals["away"]) >= 3.0:
         low, high = sorted(TEAMS, key=vals.get)
         fp(
             "fp_higher_line",
@@ -494,40 +515,62 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
             break
     # 8. the wrong player named as the top passer
     for team in TEAMS:
-        players = toolbox.get_team_passing(match, team).players
-        if len(players) >= 5:
+        players = toolbox.get_team_passing(match, team).players  # most attempts first
+        if len(players) >= 5 and players[0].attempted > players[1].attempted:
             wrong = players[4].player_id
             fp(
                 "fp_top_passer",
-                f"Why did {wrong} make the most passes for the {team} team?",
+                f"Why did {wrong} attempt the most passes for the {team} team?",
                 {
                     "must_mention_any": [players[0].player_id],
-                    "truth": f"{players[0].player_id} made the most passes, not {wrong}",
+                    "truth": f"{players[0].player_id} attempted the most passes, not {wrong}",
                 },
                 [["get_team_passing"], ["get_pass_network"]],
             )
             break
     # 9. a third half
-    fp(
-        "fp_third_half",
-        "What did the away team change in the third half?",
-        {"must_mention_any": ["two", "2", "no", "not"], "truth": "the match has only two halves"},
-        [["get_match_overview"]],
-    )
+    if two_periods:
+        fp(
+            "fp_third_half",
+            "What did the away team change in the third half?",
+            {
+                "must_mention_any": ["two", "2", "no", "not"],
+                "truth": "the match has only two halves",
+            },
+            [["get_match_overview"]],
+        )
     # 10. a real moment moved to the wrong time
     if press:
         m = press[0]
+        real = moment_rows[
+            (moment_rows["type"] == "press_change") & (moment_rows["team"] == m.team)
+        ]
+        # match seconds of every estimated start and emit of this team's press changes
+        instants = [(int(r.period), t) for r in real.itertuples() for t in (r.start_t, r.emit_t)]
+        match_s = [(period - 1) * 45 * 60 + t for period, t in instants]
         mins = int(m.emit_clock.split("+")[0].split(":")[0])
-        wrong_clock = f"{(mins + 20) % 90:02d}:00" if mins + 20 < 90 else f"{mins - 20:02d}:00"
-        fp(
-            "fp_wrong_time",
-            f"Why did the {m.team} team's pressing change at {wrong_clock}?",
-            {
-                "must_mention_any": [m.emit_clock],
-                "truth": f"it was detected at {m.emit_clock}, not {wrong_clock}",
-            },
-            [["find_moments"]],
+        wrong_clock = next(
+            (
+                f"{c:02d}:00"
+                for d in (20, -20, 30, -30, 40, -40, 15, -15, 10, -10)
+                if 1 <= (c := mins + d) <= 89
+                and all(abs(c * 60 - x) >= 10 * 60 for x in match_s)  # clearly not a real one
+            ),
+            None,
         )
+        real_clocks = sorted({match_clock(period, t) for period, t in instants})
+        if wrong_clock is not None:
+            fp(
+                "fp_wrong_time",
+                f"Why did the {m.team} team's pressing change at {wrong_clock}?",
+                {
+                    "must_mention_any": real_clocks,
+                    "truth": f"the {m.team} team's press changes were at "
+                    f"{', '.join(real_clocks)} (estimated starts and detections), "
+                    f"not {wrong_clock}",
+                },
+                [["find_moments"]],
+            )
 
 
 __all__ = ["Question", "ToolError", "generate"]

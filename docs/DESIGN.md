@@ -312,6 +312,18 @@ disclosed here; the test split was not looked at.
   `close_call_formation` rewording deliberately omits "how certain"; it is still
   scored on the close-call caveat. The `get_team_dimensions` description now
   defines line height as the distance from the team's own goal line.
+- *False-premise validity, from the review of `false_premises`.* A premise must be
+  clearly false, not borderline, or the question has no right answer. The
+  thresholds were set from the data definitions, without reference to model
+  outputs: a wrong press-change time is at least 10 minutes from every estimated
+  start and emit of that team's press changes, and the gold accepts any of them;
+  "pressed harder" needs a whole-pitch intensity gap of at least 0.05, and "higher
+  line" a gap of at least 3 m over the whole first period (stoppage included);
+  "switched to a back five" needs no 5-at-the-back label and a streaming back-line
+  count that never reached 5; the wrong top passer is asked about attempts, and
+  only when the top player's attempts are not tied. Extra time and third-half
+  premises are generated only for two-period matches, and extra time is worded
+  "the first period of extra time", since plain "extra time" often means stoppage.
 - *Frozen hashes.* `frozen.json` also pins hashes of the question bank
   (`questions.py`) and the scorers (`scoring.py`, `premise_judge.py`); the test
   split refuses to start if any pinned hash differs.

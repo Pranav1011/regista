@@ -277,10 +277,19 @@ def summarize(df: pd.DataFrame) -> dict:
     }
 
 
-def premise_agreement(df: pd.DataFrame) -> dict | None:
+# templates whose fact to name is a team: an answer that names either team, or a
+# generic denial, looks alike to the pattern rule, so its agreement says little here
+TEAM_NAME_TEMPLATES = ("fp_wrong_team", "fp_press_harder", "fp_higher_line")
+
+
+def premise_agreement(df: pd.DataFrame, exclude: tuple[str, ...] = ()) -> dict | None:
     """Judge (primary) vs pattern (secondary) on false-premise items: raw agreement and
     Cohen's kappa, on premise rejection and on the final correct verdict."""
-    fp = df[(df["q_category"] == "false_premise") & (df["premise_scorer"] == "judge")]
+    fp = df[
+        (df["q_category"] == "false_premise")
+        & (df["premise_scorer"] == "judge")
+        & ~df["q_template"].isin(exclude)
+    ]
     if fp.empty:
         return None
 
@@ -428,7 +437,17 @@ def write_report() -> Path:
                 f"{agree['correct_judge_rate']:.2f}, pattern {agree['correct_pattern_rate']:.2f}; "
                 f"agreement {agree['correct_agreement']:.2f}, kappa {agree['correct_kappa']:.2f}.",
                 "",
+                "The pattern rule's agreement is uninformative for templates whose fact to "
+                f"name is a team ({', '.join(TEAM_NAME_TEMPLATES)}): a team name appears in "
+                "almost every answer.",
             ]
+            rest = premise_agreement(df, TEAM_NAME_TEMPLATES)
+            if rest:
+                lines += [
+                    f"Without them ({rest['items']} items): correct agreement "
+                    f"{rest['correct_agreement']:.2f}, kappa {rest['correct_kappa']:.2f}.",
+                ]
+            lines += [""]
         spread = paraphrase_spread(df)
         if not spread.empty:
             lines += [
@@ -485,6 +504,18 @@ def write_report() -> Path:
                 + ".",
                 "",
             ]
+    lines += [
+        "## Limitations",
+        "",
+        "- Gold answers come from the same tools the agent calls, so this evaluation "
+        "measures faithfulness to the tools (right tool, right reading, grounded numbers "
+        "and times), not whether the tools are right; tool correctness is covered by "
+        "the Phase 1 evaluations (`eval/reports/phase1.md`).",
+        "- The false-premise judge is an LLM (gemma4:12b); its quote is verified to be "
+        "in the answer, but whether that sentence rejects the premise is its judgment. "
+        "Judge-human agreement comes from the 30 hand labels (`eval/agent/label.py`).",
+        "",
+    ]
     labels = HERE / "human_labels.jsonl"
     if labels.exists():
         lines += [
