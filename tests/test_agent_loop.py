@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from synthetic_match import MatchSpec, make_match
 
-from regista.agent.loop import Agent, ProviderReply, tool_schemas
+from regista.agent.loop import Agent, ProviderError, ProviderReply, tool_schemas
 from regista.agent.tools import TOOL_NAMES, Toolbox
 from regista.store import build_store
 
@@ -29,7 +29,10 @@ class Scripted:
 
     def chat(self, messages, tools=None):
         self.sent.append((list(messages), tools is not None))
-        return self.replies.pop(0)
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
 
 
 @pytest.fixture(scope="module")
@@ -156,3 +159,20 @@ def test_retry_after_an_echoed_error_can_recover(toolbox):
     )
     a = Agent(toolbox, provider).answer("Formation?", MATCH)
     assert a.status == "verified" and label in a.answer_text
+
+
+def test_malformed_model_output_is_retried_then_reported_not_skipped(toolbox):
+    bad = ProviderError("expected element type <function> but have <parameter>")
+    label = toolbox.get_formation(MATCH, "home", "out").most_common_label
+    recovered = Scripted(
+        [
+            bad,
+            _call("get_formation", match=MATCH, team="home", phase="out"),
+            _say(f"Home defended in a {label}."),
+        ]
+    )
+    a = Agent(toolbox, recovered).answer("Shape?", MATCH)
+    assert a.status == "verified"
+    failed = Scripted([bad, bad])
+    a = Agent(toolbox, failed).answer("Shape?", MATCH)
+    assert a.answer_text.startswith("I couldn't compute this") and a.status == "unverified"

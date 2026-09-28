@@ -49,6 +49,11 @@ what could not be computed. Never reply with the raw error.
 - Keep answers short: two to four sentences, with the match clock of what you describe.
 """
 
+MALFORMED_PROMPT = (
+    "Your last reply could not be parsed. Call one tool at a time with valid JSON arguments, "
+    "or answer in plain text."
+)
+
 ERROR_RETRY_PROMPT = (
     "Your reply repeated a tool error instead of answering. Call the tool again with corrected "
     "arguments, or explain in plain words what could not be computed and why."
@@ -60,6 +65,10 @@ RETRY_PROMPT = (
     "Rewrite the answer using only numbers that appear in the tool results (you may round "
     "them), or remove those numbers. Do not call more tools."
 )
+
+
+class ProviderError(RuntimeError):
+    """The model server rejected or could not parse the model's output."""
 
 
 @dataclass
@@ -98,15 +107,20 @@ class OllamaProvider:
         self.client = ollama.Client(host=host)
 
     def chat(self, messages: list[dict], tools: list[dict] | None = None) -> ProviderReply:
+        import ollama
+
         start = time.perf_counter()
-        r = self.client.chat(
-            model=self.name,
-            messages=messages,
-            tools=tools,
-            think=self.think,
-            options=self.options,
-            keep_alive=self.keep_alive,
-        )
+        try:
+            r = self.client.chat(
+                model=self.name,
+                messages=messages,
+                tools=tools,
+                think=self.think,
+                options=self.options,
+                keep_alive=self.keep_alive,
+            )
+        except ollama.ResponseError as e:
+            raise ProviderError(str(e)) from e
         calls = [
             (c.function.name, dict(c.function.arguments or {}))
             for c in (r.message.tool_calls or [])
@@ -174,6 +188,7 @@ class _Trace:
     tools_used: list[dict] = field(default_factory=list)
     citations: list[dict] = field(default_factory=list)
     caveats: list[str] = field(default_factory=list)
+    provider_errors: list[str] = field(default_factory=list)
 
 
 def _for_model(result: Any, seen_notes: list[str]) -> Any:
@@ -249,10 +264,19 @@ class Agent:
                 trace.caveats.append(result["reason"])
         return json.dumps(_for_model(result, seen_notes), default=str)
 
+    def _chat(self, messages: list[dict], tools: list[dict] | None, trace: _Trace) -> ProviderReply:
+        """One model turn; a malformed reply gets one retry with the problem stated."""
+        try:
+            return self.provider.chat(messages, tools=tools)
+        except ProviderError as e:
+            trace.provider_errors.append(str(e))
+            messages.append({"role": "user", "content": MALFORMED_PROMPT})
+            return self.provider.chat(messages, tools=tools)
+
     def _tool_rounds(self, messages: list[dict], trace: _Trace, rounds: int) -> tuple[str, bool]:
         """Let the model call tools for up to ``rounds`` turns; return (final text, truncated)."""
         for _ in range(rounds):
-            reply = self.provider.chat(messages, tools=self.schemas)
+            reply = self._chat(messages, self.schemas, trace)
             if not reply.tool_calls:
                 return reply.content, reply.truncated
             messages.append(
@@ -272,7 +296,7 @@ class Agent:
                         "content": self._run_tool(name, args, trace),
                     }
                 )
-        reply = self.provider.chat(messages, tools=None)
+        reply = self._chat(messages, None, trace)
         return reply.content, reply.truncated
 
     def answer(self, question: str, match: str) -> AgentAnswer:
@@ -282,15 +306,23 @@ class Agent:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"Match: {match}\nQuestion: {question}"},
         ]
-        content, truncated = self._tool_rounds(messages, trace, self.max_rounds)
-        errors = [o["error"] for o in trace.outputs if isinstance(o, dict) and "error" in o]
         couldnt_compute = False
-        if echoes_error(content, errors):
+        try:
+            content, truncated = self._tool_rounds(messages, trace, self.max_rounds)
+        except ProviderError as e:
+            content, truncated, couldnt_compute = "", False, True
+            content = f"I couldn't compute this: the model's reply could not be parsed ({e})."
+            trace.caveats.append("The model's reply could not be parsed; no answer was computed.")
+        errors = [o["error"] for o in trace.outputs if isinstance(o, dict) and "error" in o]
+        if not couldnt_compute and echoes_error(content, errors):
             messages += [
                 {"role": "assistant", "content": content},
                 {"role": "user", "content": ERROR_RETRY_PROMPT},
             ]
-            content, truncated = self._tool_rounds(messages, trace, MAX_ERROR_RETRY_ROUNDS)
+            try:
+                content, truncated = self._tool_rounds(messages, trace, MAX_ERROR_RETRY_ROUNDS)
+            except ProviderError:
+                content = ""
             errors = [o["error"] for o in trace.outputs if isinstance(o, dict) and "error" in o]
             if echoes_error(content, errors):
                 couldnt_compute = True
@@ -303,7 +335,7 @@ class Agent:
         sources = [*trace.outputs, question, match]
         check = check_numbers(content, sources)
         retried = False
-        if not check.grounded:
+        if not check.grounded and not couldnt_compute:
             retried = True
             messages += [
                 {"role": "assistant", "content": content},
@@ -312,8 +344,11 @@ class Agent:
                     "content": RETRY_PROMPT.format(numbers=", ".join(check.ungrounded)),
                 },
             ]
-            reply = self.provider.chat(messages, tools=None)
-            content, truncated = reply.content, reply.truncated
+            try:
+                reply = self._chat(messages, None, trace)
+                content, truncated = reply.content, reply.truncated
+            except ProviderError:
+                pass  # keep the first answer; it stays unverified
             check = check_numbers(content, sources)
         if truncated:
             trace.caveats.append("The answer was cut off at the model's length limit.")
