@@ -7,10 +7,10 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 | split   | model       |   questions |   accuracy |   tool selection |   citation validity |   number grounding |   abstention accuracy |   false abstention |   latency p50 (s) |   latency p95 (s) |   false premise full correction | false premise scorer   |
 |:--------|:------------|------------:|-----------:|-----------------:|--------------------:|-------------------:|----------------------:|-------------------:|------------------:|------------------:|--------------------------------:|:-----------------------|
-| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |             15.37 |            29.44  |                           nan   |                        |
-| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |             15.88 |            48.587 |                           nan   |                        |
-| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |              5.8  |            11.32  |                           nan   |                        |
-| dev     | qwen3.5:9b  |         124 |      0.968 |            0.947 |               1     |              1     |                   1   |              0.114 |              9.68 |            15.478 |                             0.5 | judge                  |
+| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |            15.37  |            29.44  |                           nan   |                        |
+| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |            15.88  |            48.587 |                           nan   |                        |
+| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |             5.8   |            11.32  |                           nan   |                        |
+| dev     | qwen3.5:9b  |         124 |      0.968 |            0.947 |               1     |              1     |                   1   |              0.114 |             9.785 |            15.366 |                             0.5 | judge                  |
 
 ## dev / gemma4:12b: accuracy per category
 
@@ -123,7 +123,7 @@ Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00
   "prompt_hash": "08a94cfcf81b",
   "judge": "gemma4:12b",
   "frozen_at": "2026-09-28",
-  "reason": "tied best dev accuracy with gemma4:12b on the 38-question set, lower latency; re-frozen on the reviewed 124-question dev set (third and final dev iteration)",
+  "reason": "tied best dev accuracy with gemma4:12b on the 38-question set, lower latency; re-frozen on the reviewed 124-question dev set; re-frozen after the late-period-start clamp (dev run 4 identical to run 3, 124/124 answers)",
   "dev": {
     "gemma4_12b": {
       "overall_accuracy": 0.974,
@@ -155,14 +155,14 @@ Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00
         "temporal": 1.0,
         "unanswerable": 1.0
       },
-      "latency_p50": 9.68,
-      "latency_p95": 15.48,
+      "latency_p50": 9.79,
+      "latency_p95": 15.37,
       "number_grounding": 1.0,
       "citation_validity": 1.0,
       "false_premise_full_correction": 0.5
     }
   },
-  "code_hash": "df1eda6a080d",
+  "code_hash": "51994bc9738b",
   "dev_question_count": 124,
   "question_bank_hash": "ad9c0540b7f6",
   "scorer_hash": "cc1ecbd13ea0"

@@ -4,7 +4,7 @@
   "prompt_hash": "08a94cfcf81b",
   "judge": "gemma4:12b",
   "frozen_at": "2026-09-28",
-  "reason": "tied best dev accuracy with gemma4:12b on the 38-question set, lower latency; re-frozen on the reviewed 124-question dev set (third and final dev iteration)",
+  "reason": "tied best dev accuracy with gemma4:12b on the 38-question set, lower latency; re-frozen on the reviewed 124-question dev set; re-frozen after the late-period-start clamp (dev run 4 identical to run 3, 124/124 answers)",
   "dev": {
     "gemma4_12b": {
       "overall_accuracy": 0.974,
@@ -36,14 +36,14 @@
         "temporal": 1.0,
         "unanswerable": 1.0
       },
-      "latency_p50": 9.68,
-      "latency_p95": 15.48,
+      "latency_p50": 9.79,
+      "latency_p95": 15.37,
       "number_grounding": 1.0,
       "citation_validity": 1.0,
       "false_premise_full_correction": 0.5
     }
   },
-  "code_hash": "df1eda6a080d",
+  "code_hash": "51994bc9738b",
   "dev_question_count": 124,
   "question_bank_hash": "ad9c0540b7f6",
   "scorer_hash": "cc1ecbd13ea0"

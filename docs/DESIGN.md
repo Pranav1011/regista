@@ -361,6 +361,18 @@ failures are model weaknesses, disclosed rather than fixed:
 - `top_pass_pair`, first rewording (metrica/2): "combined for the most passes"
   is read as the two players with the most pass attempts each.
 
+**Infrastructure fix at the first test start.** The first test start crashed
+while generating questions, before any model call: one SkillCorner match's
+second half starts recording at 45:03, and the tools rejected "45:00" (1 s
+tolerance), which both the question bank and the agent use for the start of
+the second half. A clock between a period's nominal start and its first
+recorded frame now clamps to that frame; clocks after the recorded end still
+raise. The clamp fires only where the old code raised, and the dev periods
+start at 0.04 s, so dev behaviour cannot change; the dev question bank was
+checked identical. The dev split was nevertheless re-run on the fixed code and
+re-frozen (fourth run; the third is archived), so the frozen code hash is
+backed by a dev run. No test answer existed at that point.
+
 **Consequence.** Answers take about 11-19 s on a laptop, so the hosted demo shows
 pre-generated answers and free-form questions need `regista serve` locally. The
 dev set is small (38 questions, one wrong answer for the chosen model), so the
