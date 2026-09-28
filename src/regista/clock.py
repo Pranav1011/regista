@@ -23,7 +23,9 @@ def match_seconds(period: int, t: float) -> float:
 def match_clock(period: int, t: float) -> str:
     """'mm:ss' match clock for ``t`` seconds into ``period``; stoppage as '45+m:ss'."""
     match_seconds(period, t)
-    if t >= PERIOD_LENGTH_S:
+    # first half: 45:00 and later is stoppage ("45:00" alone means the second-half kick-off);
+    # second half: exactly 90:00 is shown as such, later is stoppage
+    if (period == 1 and t >= PERIOD_LENGTH_S) or (period == 2 and t > PERIOD_LENGTH_S):
         extra = int(t - PERIOD_LENGTH_S)
         base = 45 if period == 1 else 90
         return f"{base}+{extra // 60}:{extra % 60:02d}"

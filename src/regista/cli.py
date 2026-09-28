@@ -100,5 +100,23 @@ def mcp_cmd(store_root: Path = typer.Option(None, help="Store root (default data
     build_server(store_root).run("stdio")
 
 
+@app.command("export-viewer")
+def export_viewer_cmd(
+    game: list[int] = typer.Option([1, 2, 3], help="Metrica sample games to export."),
+    out: Path = typer.Option(Path("viewer/public/data"), help="Viewer data directory."),
+) -> None:
+    """Export Metrica match stores for the static viewer (games 1-2 are tuning matches)."""
+    from regista.viewer_export import export_match
+
+    tuning = {1, 2}
+    for g in game:
+        label = (
+            "tuning match (Metrica game used to design thresholds)" if g in tuning else "held out"
+        )
+        path = export_match(io.data_dir() / "store" / "metrica" / str(g), out, label)
+        size = sum(f.stat().st_size for f in path.iterdir())
+        typer.echo(f"exported {path} ({size / 1e6:.1f} MB)")
+
+
 if __name__ == "__main__":
     app()

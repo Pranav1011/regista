@@ -12,6 +12,8 @@ def test_second_half_starts_at_45_and_stoppage_is_explicit():
     assert match_clock(2, 0) == "45:00"
     assert match_clock(2, 17 * 60 + 3) == "62:03"
     assert match_clock(2, 2760) == "90+1:00"
+    assert match_clock(2, 2700) == "90:00"
+    assert match_clock(1, 2700) == "45+0:00"
     assert match_seconds(2, 10) == 2710
 
 

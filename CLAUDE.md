@@ -89,3 +89,45 @@ data/                      local only, gitignored
 docs/ROADMAP.md            phases and definitions of done
 THIRD_PARTY_NOTICES.md     every borrowed piece of code/data and its terms
 ```
+
+## Design Context
+
+### Users
+Football coaches and analysts reviewing a match, and recruiters or engineers
+opening a portfolio demo from a README link. They want to replay the match on a
+2D pitch, see each team's shape and how clear-cut it is, jump to the tactical
+moments Regista flagged, and read agent answers whose evidence they can check by
+seeking the replay. They arrive curious but sceptical: the interface must earn
+trust quickly, on a laptop, often in daylight.
+
+### Brand Personality
+An analyst's instrument: **precise, calm, trustworthy**. The interface should
+evoke confidence in the evidence rather than excitement. It states uncertainty
+plainly ("close call", "model estimate") and never oversells a number.
+
+### Aesthetic Direction
+- Light theme: tinted off-white paper, a muted grass-green pitch, ink-dark text
+  tinted toward the brand hue (no pure black or white).
+- Dense but legible, like a broadcast analysis desk or a scientific instrument:
+  numbers and evidence front and centre, restrained decoration, clear hierarchy.
+- Team identity: red home, blue away, always paired with a non-colour cue
+  (filled vs ringed markers and shirt numbers).
+- Anti-references: generic SaaS dashboards (card grids, big KPI numbers,
+  gradient accents); neon esports or betting (glow on black, aggressive motion);
+  FIFA or video-game HUDs (glossy chrome); toy or playful styling (bubbly
+  shapes, emoji, bouncy motion).
+- Accessibility: WCAG 2.2 AA contrast, full keyboard control of replay and
+  timeline, visible focus, reduced-motion support, nothing conveyed by colour
+  alone.
+
+### Design Principles
+1. **Evidence first.** Every claim on screen links to the moment it came from;
+   citations seek the replay.
+2. **Honest uncertainty.** Margins, "close call", and "model estimate" are shown
+   where they apply, in the same visual weight as the claim.
+3. **Causal by default.** During playback, show only what was knowable at that
+   time: cards and alerts appear when their data exists.
+4. **Quiet surface, strong structure.** Typography and spacing carry the
+   hierarchy; colour is reserved for teams and for state.
+5. **Never by colour alone.** Every colour-coded meaning has a shape, text, or
+   position cue too.

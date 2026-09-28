@@ -21,3 +21,8 @@ outputs/
 .pytest_cache/
 .ruff_cache/
 .ipynb_checkpoints/
+
+# viewer build output and exported match data (generated; never committed)
+viewer/public/data/
+viewer/node_modules/
+viewer/dist/
