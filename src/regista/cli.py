@@ -92,5 +92,13 @@ def build_store_cmd(
     typer.echo(f"wrote store to {path}")
 
 
+@app.command("mcp")
+def mcp_cmd(store_root: Path = typer.Option(None, help="Store root (default data/store).")) -> None:
+    """Run the Regista MCP server over stdio."""
+    from regista.agent.mcp_server import build_server
+
+    build_server(store_root).run("stdio")
+
+
 if __name__ == "__main__":
     app()

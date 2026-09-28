@@ -122,8 +122,8 @@ def compute_tables(
     nodes = node_positions(frames, phase)
     pressure = pressure_frames(frames, owner)
     stream = stream_windows(frames, params, StreamConfig(**moments_config["stream"]))
-    moments = detect_moments(stream, DetectorConfig(**moments_config["detectors"]))
-    moments = moments.assign(evidence=moments["evidence"].map(json.dumps))
+    alerts = detect_moments(stream, DetectorConfig(**moments_config["detectors"]))
+    alerts = alerts.assign(evidence=alerts["evidence"].map(json.dumps))
     edges = pass_edges(detected[detected["kind"] == "pass"])
     return {
         "frames": frames,
@@ -139,7 +139,7 @@ def compute_tables(
         "pressure": pressure,
         "press_windows": press_windows(pressure, window_s),
         "stream_windows": stream,
-        "moments": moments,
+        "moments": alerts,
         "_radius": pd.DataFrame({"radius_m": [radius]}),
     }
 

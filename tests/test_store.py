@@ -69,3 +69,15 @@ def test_store_rejects_different_parameters(built):
 def test_missing_store_raises(tmp_path):
     with pytest.raises(StoreError, match="build-store"):
         Store(tmp_path / "nope")
+
+
+def test_pass_tables_hold_pass_attempts(built):
+    path, _ = built
+    store = Store(path)
+    pm = store.table("pass_moments")
+    assert {"moment_id", "from_player", "to_player", "pitch_control", "display_probability"} <= set(
+        pm.columns
+    )
+    assert len(pm) > 0 and pm["display_probability"].between(0, 1).all()
+    assert set(store.table("pass_options")["moment_id"]) <= set(pm["moment_id"])
+    assert {"type", "emit_t", "evidence"} <= set(store.table("moments").columns)
