@@ -39,8 +39,21 @@ exact formation labels are noisy.
 - For "when" questions about tactical changes, use find_moments; it returns the clock of \
 each detected moment.
 - To find which player passed most, use get_team_passing.
+- Do not describe values with qualitative words such as "high", "low", "intense", or \
+"clear-cut" unless a tool gives that label; state the values and say which is higher.
+- If the question assumes something the tools contradict (a change that did not happen, \
+the wrong team, a time outside the match), say that the premise is not supported and give \
+what the tools show.
+- If a tool returns an error, fix the arguments and call it again, or explain in plain words \
+what could not be computed. Never reply with the raw error.
 - Keep answers short: two to four sentences, with the match clock of what you describe.
 """
+
+ERROR_RETRY_PROMPT = (
+    "Your reply repeated a tool error instead of answering. Call the tool again with corrected "
+    "arguments, or explain in plain words what could not be computed and why."
+)
+MAX_ERROR_RETRY_ROUNDS = 3
 
 RETRY_PROMPT = (
     "Your answer contains numbers that do not appear in the tool results: {numbers}. "
@@ -179,6 +192,21 @@ def _for_model(result: Any, seen_notes: list[str]) -> Any:
     return out
 
 
+def echoes_error(content: str, errors: list[str]) -> bool:
+    """True if a reply is empty, a JSON error object, or a tool error message repeated verbatim."""
+    c = content.strip()
+    if not c:
+        return True
+    if c.startswith("{"):
+        try:
+            parsed = json.loads(c)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, dict) and "error" in parsed:
+            return True
+    return any(c.strip("\"' .") == e.strip("\"' .") for e in errors if e)
+
+
 class Agent:
     def __init__(self, toolbox: Toolbox, provider: Provider, max_rounds: int = 6):
         self.toolbox = toolbox
@@ -221,20 +249,12 @@ class Agent:
                 trace.caveats.append(result["reason"])
         return json.dumps(_for_model(result, seen_notes), default=str)
 
-    def answer(self, question: str, match: str) -> AgentAnswer:
-        start = time.perf_counter()
-        trace = _Trace()
-        messages: list[dict] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Match: {match}\nQuestion: {question}"},
-        ]
-        content = ""
-        truncated = False
-        for _ in range(self.max_rounds):
+    def _tool_rounds(self, messages: list[dict], trace: _Trace, rounds: int) -> tuple[str, bool]:
+        """Let the model call tools for up to ``rounds`` turns; return (final text, truncated)."""
+        for _ in range(rounds):
             reply = self.provider.chat(messages, tools=self.schemas)
             if not reply.tool_calls:
-                content, truncated = reply.content, reply.truncated
-                break
+                return reply.content, reply.truncated
             messages.append(
                 {
                     "role": "assistant",
@@ -252,9 +272,33 @@ class Agent:
                         "content": self._run_tool(name, args, trace),
                     }
                 )
-        else:
-            reply = self.provider.chat(messages, tools=None)
-            content, truncated = reply.content, reply.truncated
+        reply = self.provider.chat(messages, tools=None)
+        return reply.content, reply.truncated
+
+    def answer(self, question: str, match: str) -> AgentAnswer:
+        start = time.perf_counter()
+        trace = _Trace()
+        messages: list[dict] = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Match: {match}\nQuestion: {question}"},
+        ]
+        content, truncated = self._tool_rounds(messages, trace, self.max_rounds)
+        errors = [o["error"] for o in trace.outputs if isinstance(o, dict) and "error" in o]
+        couldnt_compute = False
+        if echoes_error(content, errors):
+            messages += [
+                {"role": "assistant", "content": content},
+                {"role": "user", "content": ERROR_RETRY_PROMPT},
+            ]
+            content, truncated = self._tool_rounds(messages, trace, MAX_ERROR_RETRY_ROUNDS)
+            errors = [o["error"] for o in trace.outputs if isinstance(o, dict) and "error" in o]
+            if echoes_error(content, errors):
+                couldnt_compute = True
+                reason = errors[-1] if errors else "the model gave no answer"
+                content = f"I couldn't compute this: {reason}."
+                trace.caveats.append(
+                    "A tool returned an error and the answer could not be computed."
+                )
 
         sources = [*trace.outputs, question, match]
         check = check_numbers(content, sources)
@@ -280,7 +324,9 @@ class Agent:
             citations=trace.citations,
             tools_used=trace.tools_used,
             caveats=trace.caveats,
-            status="verified" if check.grounded and not truncated else "unverified",
+            status="verified"
+            if check.grounded and not truncated and not couldnt_compute
+            else "unverified",
             ungrounded_numbers=check.ungrounded,
             retried=retried,
             model=self.provider.name,

@@ -69,42 +69,48 @@ def results_path(split: str, model: str) -> Path:
 
 
 def run(split: str, model: str, think, limit: int | None = None) -> Path:
+    """Answer every question of a split, appending results as they complete.
+
+    If the results file already has some items (e.g. after a crash), those are
+    kept and never regenerated; only the remaining questions are asked.
+    """
     toolbox = Toolbox(io.data_dir() / "store")
-    provider = OllamaProvider(model, think=think)
-    agent = Agent(toolbox, provider)
     out = results_path(split, model)
     out.parent.mkdir(parents=True, exist_ok=True)
     questions = [q.to_dict() for m in SPLITS[split] for q in generate(toolbox, m)]
     if limit:
         questions = questions[:limit]
+    done = set()
+    if out.exists():
+        done = {json.loads(line)["question"]["qid"] for line in out.read_text().splitlines()}
+    todo = [q for q in questions if q["qid"] not in done]
+    if not todo:
+        sys.exit(f"{out} already holds every question of this split; refusing to regenerate")
+    print(f"{len(done)} done, {len(todo)} to go")
+    provider = OllamaProvider(model, think=think)
+    agent = Agent(toolbox, provider)
     started = time.strftime("%Y-%m-%dT%H:%M:%S")
     try:
-        with out.open("w") as fh:
-            for i, q in enumerate(questions):
+        with out.open("a") as fh:
+            for i, q in enumerate(todo):
                 a = agent.answer(q["question"], q["match"]).model_dump()
                 s = score(q, a, toolbox)
+                meta = {
+                    "split": split,
+                    "model": model,
+                    "think": think,
+                    "prompt_hash": prompt_hash(),
+                    "code_hash": code_hash(),
+                    "started": started,
+                }
                 fh.write(
-                    json.dumps(
-                        {
-                            "question": q,
-                            "answer": a,
-                            "score": s,
-                            "meta": {
-                                "split": split,
-                                "model": model,
-                                "think": think,
-                                "prompt_hash": prompt_hash(),
-                                "started": started,
-                            },
-                        },
-                        default=str,
-                    )
+                    json.dumps({"question": q, "answer": a, "score": s, "meta": meta}, default=str)
                     + "\n"
                 )
                 fh.flush()
                 mark = "OK " if s["correct"] else "BAD"
                 print(
-                    f"[{i + 1}/{len(questions)}] {q['category']:<12} {mark} "
+                    f"[{len(done) + i + 1}/{len(questions)}] {q['category']:<13} {mark} "
                     f"{a['latency_s']:>6.1f}s  {q['question'][:70]}"
                 )
     finally:
@@ -185,6 +191,49 @@ def worst(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     ]
 
 
+BOOTSTRAP = 2000
+
+
+def category_ci(df: pd.DataFrame, seed: int = 0) -> pd.DataFrame:
+    """Accuracy per category with a 95% CI from resampling matches (not questions)."""
+    rng = np.random.default_rng(seed)
+    matches = sorted(df["q_match"].unique())
+    rows = []
+    for cat, g in df.groupby("q_category"):
+        per = g.groupby("q_match")["correct"].agg(["sum", "size"]).reindex(matches, fill_value=0)
+        a, n = per["sum"].to_numpy(float), per["size"].to_numpy(float)
+        idx = rng.integers(0, len(matches), size=(BOOTSTRAP, len(matches)))
+        with np.errstate(invalid="ignore", divide="ignore"):
+            boot = a[idx].sum(axis=1) / n[idx].sum(axis=1)
+        boot = boot[~np.isnan(boot)]
+        rows.append(
+            {
+                "category": cat,
+                "questions": int(n.sum()),
+                "matches": int((n > 0).sum()),
+                "accuracy": a.sum() / n.sum(),
+                "ci_low": float(np.percentile(boot, 2.5)) if len(boot) else np.nan,
+                "ci_high": float(np.percentile(boot, 97.5)) if len(boot) else np.nan,
+            }
+        )
+    return pd.DataFrame(rows).set_index("category")
+
+
+def paraphrase_spread(df: pd.DataFrame) -> pd.DataFrame:
+    """Per template: accuracy of the original wording and of each rewording."""
+    base = df[df["q_category"] != "paraphrase"].groupby("q_template")["correct"].mean()
+    para = df[df["q_category"] == "paraphrase"]
+    if para.empty:
+        return pd.DataFrame()
+    variant = para["q_extra"].map(lambda e: f"rewording {e['variant'] + 1}")
+    table = para.assign(variant=variant).pivot_table(
+        index="q_template", columns="variant", values="correct", aggfunc="mean"
+    )
+    table.insert(0, "original", base.reindex(table.index))
+    table["spread"] = table.max(axis=1) - table.min(axis=1)
+    return table
+
+
 def write_report() -> Path:
     files = sorted([*RESULTS.glob("dev_*.jsonl"), *RESULTS.glob("test_*.jsonl")])
     if not files:
@@ -227,6 +276,23 @@ def write_report() -> Path:
             s["per_category"].round(3).to_markdown(),
             "",
         ]
+        if df["q_match"].nunique() > 2:
+            for source, g in df.groupby(df["q_match"].str.split("/").str[0]):
+                lines += [
+                    f"### {source} ({g['q_match'].nunique()} matches), match-level "
+                    f"bootstrap 95% CI",
+                    "",
+                    category_ci(g).round(3).to_markdown(),
+                    "",
+                ]
+        spread = paraphrase_spread(df)
+        if not spread.empty:
+            lines += [
+                "### Paraphrase robustness (accuracy per wording)",
+                "",
+                spread.round(2).to_markdown(),
+                "",
+            ]
     dev_files = [f for f in files if f.name.startswith("dev_")]
     if dev_files:
         allf = pd.concat([load(f) for f in dev_files], ignore_index=True)
@@ -313,8 +379,7 @@ def main() -> None:
             if frozen.get("code_hash") != code_hash():
                 sys.exit("the agent code changed since it was frozen; the test split is locked")
             model, think = frozen["model"], frozen.get("think")
-            if results_path("test", model).exists():
-                sys.exit("the test split has already been run once; refusing to run it again")
+            # an incomplete test file resumes; a complete one is refused inside run()
         if model is None:
             sys.exit("--model is required for the dev split")
         if isinstance(think, str) and think.lower() in ("true", "false"):

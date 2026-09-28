@@ -126,3 +126,33 @@ def test_model_sees_results_without_evidence_but_citations_keep_it(toolbox):
     a = Agent(toolbox, provider).answer("Shape?", MATCH)
     tool_message = next(m for m in provider.sent[-1][0] if m["role"] == "tool")
     assert '"evidence"' not in tool_message["content"] and a.citations
+
+
+def test_echoed_tool_error_is_retried_then_replaced_by_couldnt_compute(toolbox):
+    bad = dict(match=MATCH, team="home", phase="out", from_clock="80:00")
+    echo = '{"error": "outside the recorded match"}'
+    provider = Scripted(
+        [
+            _call("get_formation", **bad),
+            _say(echo),  # first try echoes the error
+            _call("get_formation", **bad),
+            _say(echo),
+        ]
+    )  # the retry does too
+    a = Agent(toolbox, provider).answer("Formation at 80:00?", MATCH)
+    assert a.answer_text.startswith("I couldn't compute this:")
+    assert a.status == "unverified" and any("could not be computed" in c for c in a.caveats)
+
+
+def test_retry_after_an_echoed_error_can_recover(toolbox):
+    label = toolbox.get_formation(MATCH, "home", "out").most_common_label
+    provider = Scripted(
+        [
+            _call("get_formation", match=MATCH, team="home", phase="out", from_clock="80:00"),
+            _say('{"error": "outside"}'),
+            _call("get_formation", match=MATCH, team="home", phase="out"),
+            _say(f"Home defended in a {label}."),
+        ]
+    )
+    a = Agent(toolbox, provider).answer("Formation?", MATCH)
+    assert a.status == "verified" and label in a.answer_text
