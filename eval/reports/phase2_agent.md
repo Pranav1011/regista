@@ -5,12 +5,12 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 ## Summary
 
-| split   | model       |   questions |   accuracy |   tool selection |   citation validity |   number grounding |   abstention accuracy |   false abstention |   latency p50 (s) |   latency p95 (s) |
-|:--------|:------------|------------:|-----------:|-----------------:|--------------------:|-------------------:|----------------------:|-------------------:|------------------:|------------------:|
-| dev     | gemma4:12b  |          38 |      0.974 |                1 |               1     |              1     |                   1   |                  0 |             15.37 |            29.44  |
-| dev     | gpt-oss:20b |          38 |      0.921 |                1 |               1     |              0.789 |                   0.9 |                  0 |             15.88 |            48.587 |
-| dev     | llama3.1:8b |          38 |      0.789 |                1 |               0.929 |              0.921 |                   1   |                  0 |              5.8  |            11.32  |
-| dev     | qwen3.5:9b  |          38 |      0.974 |                1 |               1     |              1     |                   1   |                  0 |             11.59 |            18.25  |
+| split   | model       |   questions |   accuracy |   tool selection |   citation validity |   number grounding |   abstention accuracy |   false abstention |   latency p50 (s) |   latency p95 (s) |   false premise full correction |
+|:--------|:------------|------------:|-----------:|-----------------:|--------------------:|-------------------:|----------------------:|-------------------:|------------------:|------------------:|--------------------------------:|
+| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |             15.37 |            29.44  |                         nan     |
+| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |             15.88 |            48.587 |                         nan     |
+| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |              5.8  |            11.32  |                         nan     |
+| dev     | qwen3.5:9b  |         117 |      0.906 |            0.897 |               0.901 |              0.991 |                   1   |              0.112 |             11.35 |            19.02  |                           0.474 |
 
 ## dev / gemma4:12b: accuracy per category
 
@@ -47,31 +47,48 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 ## dev / qwen3.5:9b: accuracy per category
 
-| q_category   |   questions |   accuracy |   tool_selection |
-|:-------------|------------:|-----------:|-----------------:|
-| comparison   |           4 |        1   |                1 |
-| lookup       |          10 |        0.9 |                1 |
-| multi_step   |           4 |        1   |                1 |
-| reliability  |           6 |        1   |                1 |
-| temporal     |           4 |        1   |                1 |
-| unanswerable |          10 |        1   |                1 |
+| q_category    |   questions |   accuracy |   tool_selection |
+|:--------------|------------:|-----------:|-----------------:|
+| comparison    |           4 |      1     |            1     |
+| false_premise |          19 |      0.684 |            0.737 |
+| lookup        |          10 |      1     |            1     |
+| multi_step    |           4 |      1     |            1     |
+| paraphrase    |          60 |      0.917 |            0.9   |
+| reliability   |           6 |      1     |            1     |
+| temporal      |           4 |      1     |            1     |
+| unanswerable  |          10 |      1     |            1     |
+
+### Paraphrase robustness (accuracy per wording)
+
+| q_template                |   original |   rewording 1 |   rewording 2 |   rewording 3 |   spread |
+|:--------------------------|-----------:|--------------:|--------------:|--------------:|---------:|
+| close_call_formation      |          1 |           1   |             0 |             1 |      1   |
+| first_back_line_change    |          1 |           1   |             1 |             1 |      0   |
+| first_press_change        |          1 |           1   |             1 |             1 |      0   |
+| formation_at_press_change |          1 |           1   |             0 |             1 |      1   |
+| formation_window          |          1 |           1   |             1 |             1 |      0   |
+| line_height_half          |          1 |           1   |             1 |             1 |      0   |
+| press_after               |          1 |           1   |             1 |             1 |      0   |
+| top_pass_pair             |          1 |           0.5 |             1 |             1 |      0.5 |
+| top_passer_completion     |          1 |           1   |             1 |             1 |      0   |
+| xg                        |          1 |           1   |             1 |             1 |      0   |
 
 ## Ten worst dev failures (all models)
 
 Ranked: ungrounded first, then wrong tool, then slowest.
 
-| model       | q_match   | q_category   | q_question                                                                                                    | q_gold                                                       | tools                                           | status     | answer_text                                                                                                                                                      |
-|:------------|:----------|:-------------|:--------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------|:------------------------------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| gpt-oss:20b | metrica/2 | unanswerable | What formation did the away team use out of possession at 115:00?                                             | {"decline": true}                                            | get_formation, get_formation                    | unverified | I’m sorry, but the match “metrica/2” only runs until 90 + 3:48, so there is no data for 115:00.                                                                  |
-| llama3.1:8b | metrica/1 | comparison   | Which team pressed more intensely after 30:00?                                                                | {"team": "home", "values": {"home": 0.4124, "away": 0.3589}} | get_press_stats                                 | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
-| llama3.1:8b | metrica/2 | comparison   | Which team pressed more intensely after 30:00?                                                                | {"team": "away", "values": {"home": 0.425, "away": 0.4633}}  | get_press_stats                                 | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
-| gpt-oss:20b | metrica/1 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_19", "away_21"]}                          | get_team_passing                                | verified   | The two away players who made the most passes were **away_21** with 77 attempts and **away_16** with 48 attempts.                                                |
-| gpt-oss:20b | metrica/2 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_15", "away_16"]}                          | get_team_passing                                | verified   | The two away players who attempted the most passes were **away_15** with 70 attempts and **away_20** with 61 attempts.                                           |
-| gemma4:12b  | metrica/2 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_15", "away_16"]}                          | get_team_passing                                | verified   | The two away players who combined for the most passes in the match are away_15 (70 attempts) and away_18 (61 attempts).                                          |
-| llama3.1:8b | metrica/2 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_15", "away_16"]}                          | get_team_passing                                | verified   | The two away players who combined for the most passes in the match are away_15 and away_18, with 58 completed passes from away_15 and 50 completed passes from a |
-| qwen3.5:9b  | metrica/2 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_15", "away_16"]}                          | get_team_passing                                | verified   | The two away players who combined for the most passes in the match were away_15 and away_18, with 70 and 61 pass attempts respectively.                          |
-| llama3.1:8b | metrica/2 | comparison   | Which team pressed more intensely after 60:00?                                                                | {"team": "away", "values": {"home": 0.4202, "away": 0.5209}} | get_press_stats                                 | verified   | The home team pressed more intensely after 60:00. The press intensity for the home team was 0.4217, while the away team's press intensity was 0.3247.            |
-| llama3.1:8b | metrica/1 | multi_step   | When the away team's pressing first changed, what formation were they using out of possession at that moment? | {"labels": ["3-4-3", "5-3-2"]}                               | get_match_overview, get_formation, find_moments | verified   | The away team's pressing first changed at 78:00. At that moment, they were using a 3-5-2 formation out of possession.                                            |
+| model       | q_match   | q_category    | q_question                                                                                         | q_gold                                                                      | tools                        | status     | answer_text                                                                                                                                                      |
+|:------------|:----------|:--------------|:---------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|:-----------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| qwen3.5:9b  | metrica/1 | false_premise | Why did the home team drop deep during extra time?                                                 | {"must_mention_any": ["extra time", "90", "no"], "truth": "no extra time"}  | find_moments, find_moments   | unverified | The home team did not drop deep during extra time in this match, as no line-height shift moments were detected for the home team after 90:00.                    |
+| gpt-oss:20b | metrica/2 | unanswerable  | What formation did the away team use out of possession at 115:00?                                  | {"decline": true}                                                           | get_formation, get_formation | unverified | I’m sorry, but the match “metrica/2” only runs until 90 + 3:48, so there is no data for 115:00.                                                                  |
+| llama3.1:8b | metrica/1 | comparison    | Which team pressed more intensely after 30:00?                                                     | {"team": "home", "values": {"home": 0.4124, "away": 0.3589}}                | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
+| llama3.1:8b | metrica/2 | comparison    | Which team pressed more intensely after 30:00?                                                     | {"team": "away", "values": {"home": 0.425, "away": 0.4633}}                 | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
+| qwen3.5:9b  | metrica/2 | false_premise | Why did the home team drop deep during extra time?                                                 | {"must_mention_any": ["extra time", "90", "no"], "truth": "no extra time"}  | find_moments, find_moments   | verified   | The home team did not drop deep during extra time, as no line-height shift moments were detected for the home team between 45:00 and 90+3:48.                    |
+| qwen3.5:9b  | metrica/2 | paraphrase    | At the away team's first detected press change, which out-of-possession shape were they using?     | {"labels": ["3-4-3", "4-4-2"]}                                              | find_moments, get_shape      | verified   | At the away team's first detected press change (around 72:30), they were using an out-of-possession shape with a line height of 38.2142 m, length of 29.0682 m,  |
+| qwen3.5:9b  | metrica/1 | paraphrase    | At the away team's first detected press change, which out-of-possession shape were they using?     | {"labels": ["3-4-3", "5-3-2"]}                                              | find_moments, get_shape      | verified   | At the away team's first detected press change (around 73:30), they were using an out-of-possession shape with a line height of 43.87m, length of 31.52m, and wi |
+| qwen3.5:9b  | metrica/1 | false_premise | Why did home_8 make the most passes for the home team?                                             | {"must_mention_any": ["home_7"], "truth": "home_7"}                         | get_player_passes            | verified   | The tools do not provide information about why a specific player made the most passes. The data shows home_8 attempted 57 passes with 33 completions, but the re |
+| qwen3.5:9b  | metrica/2 | paraphrase    | What shape did the home team use out of possession between 00:00 and 05:00? Is the label reliable? | {"label": "4-4-2", "runner_up": "4-1-4-1", "margin": 0.001601291430603724}  | get_shape                    | verified   | The home team used a shape with line height of 37.2 m, length of 32.3 m, and width of 38.7 m between 00:00 and 05:00 out of possession. The label is reliable as |
+| qwen3.5:9b  | metrica/2 | false_premise | What did the away team change in the third half?                                                   | {"must_mention_any": ["two", "2", "no", "not"], "truth": "only two halves"} | find_moments                 | verified   | In the third half, the away team made two changes: at 67:00 they changed their back line from a height of 4.0 to 5.0, and at 77:00 they increased their press in |
 
 ## Summaries judged by gemma4:12b (dev)
 
@@ -79,8 +96,8 @@ Rubric scores 1-5 (faithful to the fact sheet, covers flagged moments, states ca
 
 | model       |   faithful |   coverage |   caveats |
 |:------------|-----------:|-----------:|----------:|
-| llama3.1:8b |        1   |          2 |         2 |
-| qwen3.5:9b  |        3.5 |          5 |         5 |
+| llama3.1:8b |        1.5 |        2.5 |         3 |
+| qwen3.5:9b  |        5   |        5   |         5 |
 
 Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00 of them (1 - position bias). Consistent wins: qwen3.5:9b 2.
 

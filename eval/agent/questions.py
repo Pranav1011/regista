@@ -537,11 +537,13 @@ def score(q: dict, answer: dict, toolbox: Toolbox) -> dict:
     g = q["gold"]
     tmpl = q["template"]
     category = q.get("extra", {}).get("base_category", q["category"])
+    full_correction = None
     if category == "false_premise":
-        g_any = g["must_mention_any"]
-        correct = bool(CORRECTION.search(text)) and any(
-            tok.lower() in text.lower() for tok in g_any
-        )
+        # correct = the premise is explicitly rejected, with grounded numbers; "full
+        # correction" additionally names what the data shows (team, time, player, label)
+        rejected = bool(CORRECTION.search(text))
+        full_correction = rejected and any(t.lower() in text.lower() for t in g["must_mention_any"])
+        correct = rejected and answer["status"] == "verified"
     elif category == "unanswerable":
         # a correct refusal declines and states only numbers the tools returned
         correct = bool(DECLINE.search(text)) and answer["status"] == "verified"
@@ -592,6 +594,7 @@ def score(q: dict, answer: dict, toolbox: Toolbox) -> dict:
     citations = answer["citations"]
     valid = _citations_valid(citations, q, toolbox)
     return {
+        "full_correction": full_correction,
         "correct": bool(correct),
         "tool_selection": tools_ok,
         "citation_valid": valid,

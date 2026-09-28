@@ -177,6 +177,13 @@ def summarize(df: pd.DataFrame) -> dict:
         "latency_p50": float(df["latency_s"].quantile(0.5)),
         "latency_p95": float(df["latency_s"].quantile(0.95)),
         "retried": float(df["retried"].mean()),
+        "false_premise_full_correction": (
+            float(
+                df.loc[df["q_category"] == "false_premise", "full_correction"].astype(bool).mean()
+            )
+            if (df["q_category"] == "false_premise").any()
+            else np.nan
+        ),
         "n": len(df),
     }
 
@@ -264,6 +271,7 @@ def write_report() -> Path:
                 "false abstention": s["false_abstention"],
                 "latency p50 (s)": s["latency_p50"],
                 "latency p95 (s)": s["latency_p95"],
+                "false premise full correction": s["false_premise_full_correction"],
             }
         )
     lines += ["## Summary", "", pd.DataFrame(rows).round(3).to_markdown(index=False), ""]

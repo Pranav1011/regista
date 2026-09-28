@@ -260,7 +260,19 @@ is **gemma4:12b**, from a different model family than the agent, and the two are
 never loaded at the same time. Prompt, model, and judge are frozen in
 `eval/agent/frozen.json`; the test split runs once against that file.
 
-**Consequence.** Answers take about 12-19 s on a laptop, so the hosted demo shows
+**Re-freeze (2026-09-28).** Before the test run the dev set grew to 117 questions
+with two new categories: paraphrase (three rewordings of 11 templates, same gold
+answers) and false premise (10 templates asserting something the data
+contradicts). The loop gained guards against echoed tool errors and unparseable
+model output, and the prompt gained rules against unsupported qualitative labels
+and for checking a question's premise first. Re-run on the final code, qwen3.5:9b
+scores 0.906 overall on dev: 1.0 on every original category, 0.917 on paraphrases,
+and 0.684 on false premises, with the true fact named in 0.474 of false-premise
+answers; number grounding 0.991; latency p50 11.4 s, p95 19.0 s. The other three
+models were not re-run on the expanded set. `eval/agent/frozen.json` now also pins
+a hash of the agent code.
+
+**Consequence.** Answers take about 11-19 s on a laptop, so the hosted demo shows
 pre-generated answers and free-form questions need `regista serve` locally. The
 dev set is small (38 questions, one wrong answer for the chosen model), so the
 dev accuracy is a coarse ranking signal, not a precise estimate. Prompts, tools,
