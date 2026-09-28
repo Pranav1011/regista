@@ -21,7 +21,7 @@ PHASE_TEXT = {"out": "out of possession", "in": "in possession"}
 DECLINE = re.compile(
     r"not (?:be )?(?:available|modell?ed|possible|recorded|in the data)|"
     r"(?:cannot|can't|unable to|no way to) (?:be )?(?:answer|determine|provide|"
-    r"know|say|tell|calculate|compute)|outside (?:of )?the (?:recorded )?match|"
+    r"know|say|tell|calculate|compute)|outside (?:of )?the (?:recorded )?(?:match|period|data)|"
     r"(?:does not|doesn't|do not|don't) (?:have|include|contain|model|record|"
     r"track|provide)|not (?:tracked|provided|included|supported)|anonymi[sz]ed|"
     r"no (?:data|information|record)",

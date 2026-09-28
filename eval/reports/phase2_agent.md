@@ -7,10 +7,10 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 | split   | model       |   questions |   accuracy |   tool selection |   citation validity |   number grounding |   abstention accuracy |   false abstention |   latency p50 (s) |   latency p95 (s) |
 |:--------|:------------|------------:|-----------:|-----------------:|--------------------:|-------------------:|----------------------:|-------------------:|------------------:|------------------:|
-| dev     | gemma4:12b  |          38 |      0.974 |                1 |               1     |              1     |                   1   |                  0 |            15.37  |            29.44  |
-| dev     | gpt-oss:20b |          38 |      0.895 |                1 |               1     |              0.789 |                   0.8 |                  0 |            15.88  |            48.587 |
-| dev     | llama3.1:8b |          38 |      0.789 |                1 |               0.929 |              0.921 |                   1   |                  0 |             5.8   |            11.32  |
-| dev     | qwen3.5:9b  |          38 |      0.974 |                1 |               1     |              1     |                   1   |                  0 |            12.005 |            18.711 |
+| dev     | gemma4:12b  |          38 |      0.974 |                1 |               1     |              1     |                   1   |                  0 |             15.37 |            29.44  |
+| dev     | gpt-oss:20b |          38 |      0.921 |                1 |               1     |              0.789 |                   0.9 |                  0 |             15.88 |            48.587 |
+| dev     | llama3.1:8b |          38 |      0.789 |                1 |               0.929 |              0.921 |                   1   |                  0 |              5.8  |            11.32  |
+| dev     | qwen3.5:9b  |          38 |      0.974 |                1 |               1     |              1     |                   1   |                  0 |             11.59 |            18.25  |
 
 ## dev / gemma4:12b: accuracy per category
 
@@ -32,7 +32,7 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 | multi_step   |           4 |        1   |                1 |
 | reliability  |           6 |        1   |                1 |
 | temporal     |           4 |        1   |                1 |
-| unanswerable |          10 |        0.8 |                1 |
+| unanswerable |          10 |        0.9 |                1 |
 
 ## dev / llama3.1:8b: accuracy per category
 
@@ -60,18 +60,29 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 Ranked: ungrounded first, then wrong tool, then slowest.
 
-| model       | q_match   | q_category   | q_question                                                        | q_gold                                                       | tools                        | status     | answer_text                                                                                                                                                      |
-|:------------|:----------|:-------------|:------------------------------------------------------------------|:-------------------------------------------------------------|:-----------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| gpt-oss:20b | metrica/2 | unanswerable | What formation did the away team use out of possession at 115:00? | {"decline": true}                                            | get_formation, get_formation | unverified | I’m sorry, but the match “metrica/2” only runs until 90 + 3:48, so there is no data for 115:00.                                                                  |
-| llama3.1:8b | metrica/1 | comparison   | Which team pressed more intensely after 30:00?                    | {"team": "home", "values": {"home": 0.4124, "away": 0.3589}} | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
-| llama3.1:8b | metrica/2 | comparison   | Which team pressed more intensely after 30:00?                    | {"team": "away", "values": {"home": 0.425, "away": 0.4633}}  | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
-| gpt-oss:20b | metrica/1 | lookup       | Which two away players combined for the most passes in the match? | {"players": ["away_19", "away_21"]}                          | get_team_passing             | verified   | The two away players who made the most passes were **away_21** with 77 attempts and **away_16** with 48 attempts.                                                |
-| gpt-oss:20b | metrica/1 | unanswerable | What formation did the away team use out of possession at 115:00? | {"decline": true}                                            | get_formation, get_formation | verified   | I’m sorry, but the match data only covers the two halves (up to 90+4:09). A formation at 115:00 is outside the recorded period, so I can’t provide that informat |
-| gpt-oss:20b | metrica/2 | lookup       | Which two away players combined for the most passes in the match? | {"players": ["away_15", "away_16"]}                          | get_team_passing             | verified   | The two away players who attempted the most passes were **away_15** with 70 attempts and **away_20** with 61 attempts.                                           |
-| gemma4:12b  | metrica/2 | lookup       | Which two away players combined for the most passes in the match? | {"players": ["away_15", "away_16"]}                          | get_team_passing             | verified   | The two away players who combined for the most passes in the match are away_15 (70 attempts) and away_18 (61 attempts).                                          |
-| llama3.1:8b | metrica/2 | lookup       | Which two away players combined for the most passes in the match? | {"players": ["away_15", "away_16"]}                          | get_team_passing             | verified   | The two away players who combined for the most passes in the match are away_15 and away_18, with 58 completed passes from away_15 and 50 completed passes from a |
-| qwen3.5:9b  | metrica/2 | lookup       | Which two away players combined for the most passes in the match? | {"players": ["away_15", "away_16"]}                          | get_team_passing             | verified   | The two away players who combined for the most passes in the match were away_15 and away_18, with 70 and 61 pass attempts respectively.                          |
-| llama3.1:8b | metrica/2 | comparison   | Which team pressed more intensely after 60:00?                    | {"team": "away", "values": {"home": 0.4202, "away": 0.5209}} | get_press_stats              | verified   | The home team pressed more intensely after 60:00. The press intensity for the home team was 0.4217, while the away team's press intensity was 0.3247.            |
+| model       | q_match   | q_category   | q_question                                                                                                    | q_gold                                                       | tools                                           | status     | answer_text                                                                                                                                                      |
+|:------------|:----------|:-------------|:--------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------|:------------------------------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| gpt-oss:20b | metrica/2 | unanswerable | What formation did the away team use out of possession at 115:00?                                             | {"decline": true}                                            | get_formation, get_formation                    | unverified | I’m sorry, but the match “metrica/2” only runs until 90 + 3:48, so there is no data for 115:00.                                                                  |
+| llama3.1:8b | metrica/1 | comparison   | Which team pressed more intensely after 30:00?                                                                | {"team": "home", "values": {"home": 0.4124, "away": 0.3589}} | get_press_stats                                 | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
+| llama3.1:8b | metrica/2 | comparison   | Which team pressed more intensely after 30:00?                                                                | {"team": "away", "values": {"home": 0.425, "away": 0.4633}}  | get_press_stats                                 | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
+| gpt-oss:20b | metrica/1 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_19", "away_21"]}                          | get_team_passing                                | verified   | The two away players who made the most passes were **away_21** with 77 attempts and **away_16** with 48 attempts.                                                |
+| gpt-oss:20b | metrica/2 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_15", "away_16"]}                          | get_team_passing                                | verified   | The two away players who attempted the most passes were **away_15** with 70 attempts and **away_20** with 61 attempts.                                           |
+| gemma4:12b  | metrica/2 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_15", "away_16"]}                          | get_team_passing                                | verified   | The two away players who combined for the most passes in the match are away_15 (70 attempts) and away_18 (61 attempts).                                          |
+| llama3.1:8b | metrica/2 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_15", "away_16"]}                          | get_team_passing                                | verified   | The two away players who combined for the most passes in the match are away_15 and away_18, with 58 completed passes from away_15 and 50 completed passes from a |
+| qwen3.5:9b  | metrica/2 | lookup       | Which two away players combined for the most passes in the match?                                             | {"players": ["away_15", "away_16"]}                          | get_team_passing                                | verified   | The two away players who combined for the most passes in the match were away_15 and away_18, with 70 and 61 pass attempts respectively.                          |
+| llama3.1:8b | metrica/2 | comparison   | Which team pressed more intensely after 60:00?                                                                | {"team": "away", "values": {"home": 0.4202, "away": 0.5209}} | get_press_stats                                 | verified   | The home team pressed more intensely after 60:00. The press intensity for the home team was 0.4217, while the away team's press intensity was 0.3247.            |
+| llama3.1:8b | metrica/1 | multi_step   | When the away team's pressing first changed, what formation were they using out of possession at that moment? | {"labels": ["3-4-3", "5-3-2"]}                               | get_match_overview, get_formation, find_moments | verified   | The away team's pressing first changed at 78:00. At that moment, they were using a 3-5-2 formation out of possession.                                            |
+
+## Summaries judged by gemma4:12b (dev)
+
+Rubric scores 1-5 (faithful to the fact sheet, covers flagged moments, states caveats); the judge is from a different model family than the agent.
+
+| model       |   faithful |   coverage |   caveats |
+|:------------|-----------:|-----------:|----------:|
+| llama3.1:8b |        1   |          2 |         2 |
+| qwen3.5:9b  |        3.5 |          5 |         5 |
+
+Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00 of them (1 - position bias). Consistent wins: qwen3.5:9b 2.
 
 ## Frozen configuration
 
@@ -81,7 +92,7 @@ Ranked: ungrounded first, then wrong tool, then slowest.
   "think": false,
   "prompt_hash": "6fcb12c7057c",
   "judge": "gemma4:12b",
-  "frozen_at": "2026-09-27",
+  "frozen_at": "2026-09-28",
   "reason": "tied best dev accuracy with gemma4:12b; lower latency (p50 and p95)",
   "dev": {
     "gemma4_12b": {
@@ -104,11 +115,13 @@ Ranked: ungrounded first, then wrong tool, then slowest.
     },
     "qwen3.5_9b": {
       "overall_accuracy": 0.974,
-      "latency_p50": 12.005,
-      "latency_p95": 18.711,
-      "number_grounding": 1.0
+      "latency_p50": 11.59,
+      "latency_p95": 18.25,
+      "number_grounding": 1.0,
+      "note": "re-run after the context-compaction fix; other models ran on the earlier loop"
     }
-  }
+  },
+  "code_hash": "4129482d4a8d"
 }
 ```
 

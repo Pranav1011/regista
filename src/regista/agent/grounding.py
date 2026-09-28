@@ -20,12 +20,13 @@ _NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?:[.,]\d+)*(?:\.\d+)?(\s?%| percent)?"
 _ID_LIKE = re.compile(r"\b[A-Za-z]+[_-]?\d+\b")  # player ids like home_11, P3573
 
 
+_QUOTES = {ord("\u2018"): "'", ord("\u2019"): "'", ord("\u201c"): '"', ord("\u201d"): '"'}
 _DASHES = dict.fromkeys(map(ord, "\u2010\u2011\u2012\u2013\u2014\u2212"), "-")
 
 
 def normalise(text: str) -> str:
     """Unicode dashes to '-', and '90 + 3:48' to '90+3:48', before any matching."""
-    text = unicodedata.normalize("NFKC", text).translate(_DASHES)
+    text = unicodedata.normalize("NFKC", text).translate(_DASHES).translate(_QUOTES)
     return re.sub(r"\b(45|90)\s*\+\s*(\d)", r"\1+\2", text)
 
 

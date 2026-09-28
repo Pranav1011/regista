@@ -3,7 +3,7 @@
   "think": false,
   "prompt_hash": "6fcb12c7057c",
   "judge": "gemma4:12b",
-  "frozen_at": "2026-09-27",
+  "frozen_at": "2026-09-28",
   "reason": "tied best dev accuracy with gemma4:12b; lower latency (p50 and p95)",
   "dev": {
     "gemma4_12b": {
@@ -26,9 +26,11 @@
     },
     "qwen3.5_9b": {
       "overall_accuracy": 0.974,
-      "latency_p50": 12.005,
-      "latency_p95": 18.711,
-      "number_grounding": 1.0
+      "latency_p50": 11.59,
+      "latency_p95": 18.25,
+      "number_grounding": 1.0,
+      "note": "re-run after the context-compaction fix; other models ran on the earlier loop"
     }
-  }
+  },
+  "code_hash": "4129482d4a8d"
 }
