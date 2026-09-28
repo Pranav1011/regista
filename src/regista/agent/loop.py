@@ -35,7 +35,9 @@ not available. Do not guess.
 - When you report a formation, also report its margin and say when it is a close call; \
 exact formation labels are noisy.
 - Passing-option values are model estimates, not facts.
-- To compare the two teams, call the tool once for each team and compare the results.
+- For "first half" or "second half", pass period=1 or period=2 rather than clock times.
+- To compare the two teams, use the comparison the tool returns (both teams' values, which \
+is higher, and the difference); do not work out which is higher yourself.
 - For "when" questions about tactical changes, use find_moments; it returns the clock of \
 each detected moment.
 - To find which player passed most, use get_team_passing.
@@ -51,9 +53,14 @@ what could not be computed. Never reply with the raw error.
 """
 
 MALFORMED_PROMPT = (
-    "Your last reply could not be parsed. Call one tool at a time with valid JSON arguments, "
+    "Your previous tool call was malformed; call one function with valid arguments, "
     "or answer in plain text."
 )
+# The retry after a malformed call must not repeat the request: at temperature 0 the
+# same context reproduces the same malformed output (seen with qwen3.5:9b on Ollama
+# 0.34.4). It decodes with sampling instead, from a fixed seed, so runs stay reproducible.
+RETRY_TEMPERATURE = 0.7
+RETRY_SEED = 1
 
 ERROR_RETRY_PROMPT = (
     "Your reply repeated a tool error instead of answering. Call the tool again with corrected "
@@ -83,7 +90,9 @@ class ProviderReply:
 class Provider(Protocol):
     name: str
 
-    def chat(self, messages: list[dict], tools: list[dict] | None = None) -> ProviderReply: ...
+    def chat(
+        self, messages: list[dict], tools: list[dict] | None = None, sampled: bool = False
+    ) -> ProviderReply: ...
 
 
 class OllamaProvider:
@@ -107,9 +116,15 @@ class OllamaProvider:
         self.options = {"temperature": temperature, "seed": seed, "num_ctx": num_ctx}
         self.client = ollama.Client(host=host)
 
-    def chat(self, messages: list[dict], tools: list[dict] | None = None) -> ProviderReply:
+    def chat(
+        self, messages: list[dict], tools: list[dict] | None = None, sampled: bool = False
+    ) -> ProviderReply:
+        """One turn; ``sampled`` decodes at RETRY_TEMPERATURE from RETRY_SEED (retries only)."""
         import ollama
 
+        options = self.options
+        if sampled:
+            options = {**options, "temperature": RETRY_TEMPERATURE, "seed": RETRY_SEED}
         start = time.perf_counter()
         try:
             r = self.client.chat(
@@ -117,7 +132,7 @@ class OllamaProvider:
                 messages=messages,
                 tools=tools,
                 think=self.think,
-                options=self.options,
+                options=options,
                 keep_alive=self.keep_alive,
             )
         except ollama.ResponseError as e:
@@ -276,13 +291,14 @@ class Agent:
         return json.dumps(_for_model(result, seen_notes), default=str)
 
     def _chat(self, messages: list[dict], tools: list[dict] | None, trace: _Trace) -> ProviderReply:
-        """One model turn; a malformed reply gets one retry with the problem stated."""
+        """One model turn; a malformed reply gets one retry with the problem stated and
+        sampled decoding (a different request, not a repeat)."""
         try:
             return self.provider.chat(messages, tools=tools)
         except ProviderError as e:
             trace.provider_errors.append(str(e))
             messages.append({"role": "user", "content": MALFORMED_PROMPT})
-            return self.provider.chat(messages, tools=tools)
+            return self.provider.chat(messages, tools=tools, sampled=True)
 
     def _tool_rounds(self, messages: list[dict], trace: _Trace, rounds: int) -> tuple[str, bool]:
         """Let the model call tools for up to ``rounds`` turns; return (final text, truncated)."""

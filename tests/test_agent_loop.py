@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from synthetic_match import MatchSpec, make_match
@@ -27,8 +28,9 @@ class Scripted:
         self.replies = list(replies)
         self.sent = []
 
-    def chat(self, messages, tools=None):
+    def chat(self, messages, tools=None, sampled=False):
         self.sent.append((list(messages), tools is not None))
+        self.sampled = [*getattr(self, "sampled", []), sampled]
         reply = self.replies.pop(0)
         if isinstance(reply, Exception):
             raise reply
@@ -175,4 +177,52 @@ def test_malformed_model_output_is_retried_then_reported_not_skipped(toolbox):
     assert a.status == "verified"
     failed = Scripted([bad, bad])
     a = Agent(toolbox, failed).answer("Shape?", MATCH)
+    assert a.answer_text.startswith("I couldn't compute this") and a.status == "unverified"
+
+
+def test_ollama_500_on_a_malformed_call_is_retried_with_a_different_request(toolbox):
+    """A mocked Ollama 500: the retry states the problem and samples; a second 500 is reported."""
+    import ollama
+
+    from regista.agent.loop import MALFORMED_PROMPT, RETRY_TEMPERATURE, OllamaProvider
+
+    label = toolbox.get_formation(MATCH, "home", "out").most_common_label
+    err = ollama.ResponseError("expected element type <function> but have <parameter>", 500)
+
+    def reply(content="", calls=()):
+        tool_calls = [
+            SimpleNamespace(function=SimpleNamespace(name=n, arguments=a)) for n, a in calls
+        ]
+        msg = SimpleNamespace(content=content, tool_calls=tool_calls)
+        return SimpleNamespace(message=msg, done_reason="stop")
+
+    class FakeClient:
+        def __init__(self, script):
+            self.script, self.calls = list(script), []
+
+        def chat(self, **kw):
+            self.calls.append({**kw, "messages": list(kw["messages"])})
+            r = self.script.pop(0)
+            if isinstance(r, Exception):
+                raise r
+            return r
+
+    provider = OllamaProvider("fake")
+    provider.client = FakeClient(
+        [
+            err,
+            reply(calls=[("get_formation", {"match": MATCH, "team": "home", "phase": "out"})]),
+            reply(f"Home defended in a {label}."),
+        ]
+    )
+    a = Agent(toolbox, provider).answer("Formation?", MATCH)
+    first, retry = provider.client.calls[0], provider.client.calls[1]
+    assert a.status == "verified" and label in a.answer_text
+    assert retry["messages"][-1]["content"] == MALFORMED_PROMPT
+    assert first["options"]["temperature"] == 0.0
+    assert retry["options"]["temperature"] == RETRY_TEMPERATURE
+    assert provider.options["temperature"] == 0.0  # later turns are greedy again
+
+    provider.client = FakeClient([err, err])
+    a = Agent(toolbox, provider).answer("Formation?", MATCH)
     assert a.answer_text.startswith("I couldn't compute this") and a.status == "unverified"

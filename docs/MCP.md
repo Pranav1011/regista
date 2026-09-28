@@ -55,8 +55,8 @@ use its absolute path (`which uv`) as `command`.
 | `list_matches` | Matches that have a store |
 | `get_match_overview` | Periods and clocks, pass counts, detected moments, typical formations |
 | `get_formation` | Formation (shape / system / setup) per 5-minute window for a team and phase, with runner-up, margin, and a "close call" flag |
-| `get_team_dimensions` | Team dimensions in metres: line height, length, width, compactness (median of 5-minute medians) |
-| `get_press_stats` | Press intensity (defender within 5 yd of the carrier), overall and by pitch third |
+| `get_team_dimensions` | Team dimensions in metres: line height, length, width, compactness (median of 5-minute medians), plus both teams' line heights with which is higher and the gap |
+| `get_press_stats` | Press intensity (defender within 5 yd of the carrier), overall and by pitch third, plus both teams' whole-pitch values with which is higher and the gap |
 | `get_pass_network` | Pass counts between teammates (inferred from tracking) and mean positions |
 | `get_team_passing` | A team's players ranked by pass attempts, with completion share |
 | `get_player_passes` | A player's attempts, completions, receptions, and pass ids |
@@ -66,7 +66,9 @@ use its absolute path (`which uv`) as `command`.
 
 Matches are named `<source>/<match_id>`, e.g. `metrica/3`. Times are match
 clocks: `"62:00"`, or `"45+2:00"` for first-half stoppage time. A time outside
-the recorded match returns an error message saying which range is valid.
+the recorded match returns an error message saying which range is valid. Every
+tool that takes a time range also takes `period` (1 or 2) to select a whole half,
+stoppage time included.
 
 Example prompts:
 

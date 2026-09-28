@@ -128,11 +128,30 @@ class FormationResult(BaseModel):
     notes: list[str]
 
 
+class TeamComparison(BaseModel):
+    """Both teams' values over the same range, compared deterministically."""
+
+    home: float | None
+    away: float | None
+    higher: Team | None = Field(description="team with the larger value; null if equal or missing")
+    difference: float | None
+
+
+def _compare(home: float | None, away: float | None) -> TeamComparison:
+    if home is None or away is None:
+        return TeamComparison(home=home, away=away, higher=None, difference=None)
+    higher = None if home == away else ("home" if home > away else "away")
+    return TeamComparison(home=home, away=away, higher=higher, difference=_f(abs(home - away)))
+
+
 class ShapeResult(BaseModel):
     match: str
     team: Team
     phase: Phase
     line_height_m: float | None
+    line_height_comparison: TeamComparison = Field(
+        description="both teams' line heights in this range; higher = the higher line"
+    )
     length_m: float | None
     width_m: float | None
     hull_area_m2: float | None
@@ -153,6 +172,9 @@ class PressResult(BaseModel):
     match: str
     pressing_team: Team
     by_third: list[PressThird]
+    press_intensity_comparison: TeamComparison = Field(
+        description="both teams' whole-pitch press intensity in this range; higher = pressed more"
+    )
     evidence: list[Evidence]
     notes: list[str]
 
@@ -298,10 +320,23 @@ class MatchData:
         return float(ft["t"].min()), float(ft["t"].max())
 
     def segments(
-        self, from_clock: str | None, to_clock: str | None
+        self, from_clock: str | None, to_clock: str | None, period: int | None = None
     ) -> list[tuple[int, float, float]]:
-        """(period, t_from, t_to) segments for a clock range; the whole match if both are None."""
+        """(period, t_from, t_to) segments for a clock range; the whole match if both are None.
+
+        ``period`` restricts the range to that period (1 = first half, 2 = second half),
+        stoppage time included, so "first half" never depends on how "45:00" is read.
+        """
         periods = sorted(int(p) for p in self.store.manifest["periods"])
+        if period is not None:
+            if period not in periods:
+                raise ToolError(f"period {period} is not in the match (periods {periods})")
+            out = [seg for seg in self.segments(from_clock, to_clock) if seg[0] == period]
+            if not out:
+                raise ToolError(
+                    f"no data in period {period} between {from_clock!r} and {to_clock!r}"
+                )
+            return out
         start = self._resolve(from_clock, periods, default="start")
         end = self._resolve(to_clock, periods, default="end")
         if end <= start:
@@ -370,6 +405,34 @@ def _in_segments(df: pd.DataFrame, segs, t_col: str = "t", end_col: str | None =
 
 def _f(x) -> float | None:
     return None if x is None or (isinstance(x, float) and np.isnan(x)) else round(float(x), 4)
+
+
+def _dimensions(m, team: str, phase: str, segs) -> tuple[pd.Series, int]:
+    """Median line height, length, width, hull area over the windows in ``segs``."""
+    s = m.store.table("shape_windows")
+    s = s.assign(t_end=s["t_start"] + m.store.manifest["window_s"])
+    sel = s[(s["team"] == team) & (s["phase"] == phase) & _in_segments(s, segs, "t_start", "t_end")]
+    return sel[["line_height", "length", "width", "hull_area"]].median(), len(sel)
+
+
+def _press_thirds(m, pressing_team: str, segs) -> list[PressThird]:
+    """Press intensity overall ("all", first) and per third over ``segs``."""
+    p = m.store.table("pressure")
+    p = p[(p["pressing_team"] == pressing_team) & _in_segments(p, segs)]
+    rows = []
+    for third in ("all", "defensive", "middle", "attacking"):
+        s = p if third == "all" else p[p["third"] == third]
+        n = len(s)
+        rows.append(
+            PressThird(
+                third=third,
+                carrier_frames=n,
+                press_intensity=_f((s["nearest_defender_m"] <= 4.572).mean()) if n else None,
+                tight_intensity=_f((s["nearest_defender_m"] <= 2.0).mean()) if n else None,
+                mean_defenders_within=_f(s["defenders_within"].mean()) if n else None,
+            )
+        )
+    return rows
 
 
 class Toolbox:
@@ -454,6 +517,7 @@ class Toolbox:
         phase: Phase,
         from_clock: str | None = None,
         to_clock: str | None = None,
+        period: int | None = None,
     ) -> FormationResult:
         """Formation (the team's shape, system, or setup, e.g. 4-4-2) per 5-minute window.
 
@@ -461,7 +525,7 @@ class Toolbox:
         height, length, or width use get_team_dimensions.
         """
         m = self._match(match)
-        segs = m.segments(from_clock, to_clock)
+        segs = m.segments(from_clock, to_clock, period)
         f = m.store.table("formations")
         f = f.assign(t_end=f["t_end"])
         median_margin = float(f["margin"].median())
@@ -518,6 +582,7 @@ class Toolbox:
         phase: Phase,
         from_clock: str | None = None,
         to_clock: str | None = None,
+        period: int | None = None,
     ) -> ShapeResult:
         """Team dimensions in metres (median of 5-minute medians): line height (distance of
         the deepest outfield player from the team's own goal line), length, width.
@@ -525,22 +590,19 @@ class Toolbox:
         Not the formation; for the shape or system (e.g. 4-4-2) use get_formation.
         """
         m = self._match(match)
-        segs = m.segments(from_clock, to_clock)
-        s = m.store.table("shape_windows")
-        s = s.assign(t_end=s["t_start"] + m.store.manifest["window_s"])
-        sel = s[
-            (s["team"] == team) & (s["phase"] == phase) & _in_segments(s, segs, "t_start", "t_end")
-        ]
-        med = sel[["line_height", "length", "width", "hull_area"]].median()
+        segs = m.segments(from_clock, to_clock, period)
+        med, n = _dimensions(m, team, phase, segs)
+        line = {t: _f(_dimensions(m, t, phase, segs)[0]["line_height"]) for t in ("home", "away")}
         return ShapeResult(
             match=m.key,
             team=team,
             phase=phase,
             line_height_m=_f(med["line_height"]),
+            line_height_comparison=_compare(line["home"], line["away"]),
             length_m=_f(med["length"]),
             width_m=_f(med["width"]),
             hull_area_m2=_f(med["hull_area"]),
-            windows_used=len(sel),
+            windows_used=n,
             evidence=[m.evidence(p, a, b) for p, a, b in segs],
             notes=[
                 "Line height is the deepest outfield player's distance from their own goal line."
@@ -553,29 +615,18 @@ class Toolbox:
         pressing_team: Team,
         from_clock: str | None = None,
         to_clock: str | None = None,
+        period: int | None = None,
     ) -> PressResult:
         """Press intensity: share of opponent-carrier frames with a defender within 5 yd."""
         m = self._match(match)
-        segs = m.segments(from_clock, to_clock)
-        p = m.store.table("pressure")
-        p = p[(p["pressing_team"] == pressing_team) & _in_segments(p, segs)]
-        rows = []
-        for third in ("all", "defensive", "middle", "attacking"):
-            s = p if third == "all" else p[p["third"] == third]
-            n = len(s)
-            rows.append(
-                PressThird(
-                    third=third,
-                    carrier_frames=n,
-                    press_intensity=_f((s["nearest_defender_m"] <= 4.572).mean()) if n else None,
-                    tight_intensity=_f((s["nearest_defender_m"] <= 2.0).mean()) if n else None,
-                    mean_defenders_within=_f(s["defenders_within"].mean()) if n else None,
-                )
-            )
+        segs = m.segments(from_clock, to_clock, period)
+        rows = _press_thirds(m, pressing_team, segs)
+        whole = {t: _press_thirds(m, t, segs)[0].press_intensity for t in ("home", "away")}
         return PressResult(
             match=m.key,
             pressing_team=pressing_team,
             by_third=rows,
+            press_intensity_comparison=_compare(whole["home"], whole["away"]),
             evidence=[m.evidence(pp, a, b) for pp, a, b in segs],
             notes=[
                 "Pressure = defender within 5 yd (4.572 m) of the carrier, fixed radius; "
@@ -590,13 +641,14 @@ class Toolbox:
         team: Team,
         from_clock: str | None = None,
         to_clock: str | None = None,
+        period: int | None = None,
         top_k: int = 10,
     ) -> NetworkResult:
         """Pass counts between teammates (passes inferred from tracking) and mean positions."""
         if not 1 <= top_k <= 50:
             raise ToolError("top_k must be between 1 and 50")
         m = self._match(match)
-        segs = m.segments(from_clock, to_clock)
+        segs = m.segments(from_clock, to_clock, period)
         passes = m.store.table("passes")
         passes = passes[
             (passes["kind"] == "pass")
@@ -636,11 +688,16 @@ class Toolbox:
         )
 
     def get_player_passes(
-        self, match: str, player_id: str, from_clock: str | None = None, to_clock: str | None = None
+        self,
+        match: str,
+        player_id: str,
+        from_clock: str | None = None,
+        to_clock: str | None = None,
+        period: int | None = None,
     ) -> PlayerPassesResult:
         """A player's pass attempts (completed and failed), receptions, and top receivers."""
         m = self._match(match)
-        segs = m.segments(from_clock, to_clock)
+        segs = m.segments(from_clock, to_clock, period)
         pm = m.store.table("pass_moments")
         pm = pm[_in_segments(pm, segs)]
         made = pm[pm["from_player"] == player_id]
@@ -683,11 +740,16 @@ class Toolbox:
         )
 
     def get_team_passing(
-        self, match: str, team: Team, from_clock: str | None = None, to_clock: str | None = None
+        self,
+        match: str,
+        team: Team,
+        from_clock: str | None = None,
+        to_clock: str | None = None,
+        period: int | None = None,
     ) -> TeamPassingResult:
         """A team's players ranked by pass attempts, with completions and receptions."""
         m = self._match(match)
-        segs = m.segments(from_clock, to_clock)
+        segs = m.segments(from_clock, to_clock, period)
         pm = m.store.table("pass_moments")
         pm = pm[_in_segments(pm, segs) & (pm["team"] == team)]
         made = pm.groupby("from_player").agg(
@@ -756,13 +818,14 @@ class Toolbox:
         team: Team | None = None,
         from_clock: str | None = None,
         to_clock: str | None = None,
+        period: int | None = None,
     ) -> MomentsResult:
         """Detected tactical moments (causal detectors), optionally filtered by type, team, time.
 
         type: back_line_change, press_change, or line_height_shift (omit for all).
         """
         m = self._match(match)
-        segs = m.segments(from_clock, to_clock)
+        segs = m.segments(from_clock, to_clock, period)
         mo = m.store.table("moments")
         if type:
             mo = mo[mo["type"] == moment_type(type)]

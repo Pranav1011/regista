@@ -115,3 +115,26 @@ def test_team_passing_ranks_players_and_moment_types_accept_plain_words(tools):
     assert moment_type("line_height_shift") == "line_height_shift"
     with pytest.raises(ToolError, match="unknown moment type"):
         tools.find_moments(MATCH, type="goals")
+
+
+def test_period_argument_selects_a_whole_half(tools):
+    first = tools.get_team_dimensions(MATCH, "home", "out", period=1)
+    assert {e.period for e in first.evidence} == {1}
+    assert {e.period for e in tools.get_press_stats(MATCH, "away", period=2).evidence} == {2}
+    both = tools.get_team_dimensions(MATCH, "home", "out")
+    assert {e.period for e in both.evidence} == {1, 2}
+    with pytest.raises(ToolError, match="period 3"):
+        tools.get_formation(MATCH, "home", "out", period=3)
+
+
+def test_comparisons_state_both_values_which_is_higher_and_the_gap(tools):
+    d = tools.get_team_dimensions(MATCH, "home", "out", period=1)
+    c = d.line_height_comparison
+    assert c.home == d.line_height_m
+    other = tools.get_team_dimensions(MATCH, "away", "out", period=1).line_height_m
+    assert c.away == other
+    assert c.higher == ("home" if c.home > c.away else "away" if c.away > c.home else None)
+    assert c.difference == pytest.approx(abs(c.home - c.away), abs=1e-4)
+    p = tools.get_press_stats(MATCH, "home").press_intensity_comparison
+    assert p.home == tools.get_press_stats(MATCH, "home").by_third[0].press_intensity
+    assert p.away == tools.get_press_stats(MATCH, "away").by_third[0].press_intensity
