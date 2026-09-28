@@ -26,7 +26,9 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
 from _common import SKILLCORNER_MATCHES, TEST_GAME, TRAIN_GAMES  # noqa: E402
-from questions import generate, score  # noqa: E402
+from premise_judge import load as load_premise_judgments  # noqa: E402
+from questions import generate  # noqa: E402
+from scoring import score  # noqa: E402
 
 from regista import io  # noqa: E402
 from regista.agent.loop import SYSTEM_PROMPT, Agent, OllamaProvider  # noqa: E402
@@ -52,16 +54,89 @@ AGENT_CODE = [
 ]
 
 
+QUESTION_BANK = [HERE / "questions.py"]
+SCORER_CODE = [HERE / "scoring.py", HERE / "premise_judge.py"]
+
+
+def _files_hash(files: list[Path]) -> str:
+    h = hashlib.sha256()
+    for f in files:
+        h.update(f.read_bytes())
+    return h.hexdigest()[:12]
+
+
 def prompt_hash() -> str:
     return hashlib.sha256(SYSTEM_PROMPT.encode()).hexdigest()[:12]
 
 
 def code_hash() -> str:
     """Hash of the agent loop, tools, and grounding check the frozen results depend on."""
-    h = hashlib.sha256()
-    for f in AGENT_CODE:
-        h.update(f.read_bytes())
-    return h.hexdigest()[:12]
+    return _files_hash(AGENT_CODE)
+
+
+def bank_hash() -> str:
+    """Hash of the question templates, gold definitions, paraphrases and false premises."""
+    return _files_hash(QUESTION_BANK)
+
+
+def scorer_hash() -> str:
+    """Hash of the rule scorer and the false-premise judge (prompt, rubric, model)."""
+    return _files_hash(SCORER_CODE)
+
+
+def current_hashes() -> dict[str, str]:
+    return {
+        "prompt_hash": prompt_hash(),
+        "code_hash": code_hash(),
+        "question_bank_hash": bank_hash(),
+        "scorer_hash": scorer_hash(),
+    }
+
+
+def check_frozen() -> dict:
+    """The frozen configuration, or exit if anything it pins has changed since."""
+    if not FROZEN.exists():
+        sys.exit("no eval/agent/frozen.json: freeze the model and prompt on dev first")
+    frozen = json.loads(FROZEN.read_text())
+    changed = [k for k, v in current_hashes().items() if frozen.get(k) != v]
+    if changed:
+        sys.exit(f"changed since the freeze: {', '.join(changed)}; the test split is locked")
+    return frozen
+
+
+def freeze(model: str, think) -> None:
+    """Pin the model and every hash, with the dev summary of that model's results."""
+    path = results_path("dev", model)
+    df = load(path)
+    missing = df[(df["q_category"] == "false_premise") & (df["premise_scorer"] != "judge")]
+    if len(missing):
+        sys.exit(f"{len(missing)} false-premise dev items lack judge verdicts; run premise_judge")
+    stale = {r["meta"]["code_hash"] for r in map(json.loads, path.read_text().splitlines())}
+    if stale != {code_hash()}:
+        sys.exit(f"{path.name} was produced by agent code {stale}, not {code_hash()}; re-run dev")
+    s = summarize(df)
+    frozen = json.loads(FROZEN.read_text()) if FROZEN.exists() else {"dev": {}}
+    key = model.replace(":", "_").replace("/", "_")
+    frozen.update(
+        {
+            "model": model,
+            "think": think,
+            **current_hashes(),
+            "frozen_at": time.strftime("%Y-%m-%d"),
+            "dev_question_count": s["n"],
+        }
+    )
+    frozen["dev"][key] = {
+        "overall_accuracy": round(s["overall_accuracy"], 3),
+        "per_category": s["per_category"]["accuracy"].round(3).to_dict(),
+        "latency_p50": round(s["latency_p50"], 2),
+        "latency_p95": round(s["latency_p95"], 2),
+        "number_grounding": round(s["number_grounding"], 3),
+        "citation_validity": round(s["citation_validity"], 3),
+        "false_premise_full_correction": round(s["false_premise_full_correction"], 3),
+    }
+    FROZEN.write_text(json.dumps(frozen, indent=2) + "\n")
+    print(f"froze {model} in {FROZEN}")
 
 
 def results_path(split: str, model: str) -> Path:
@@ -99,8 +174,7 @@ def run(split: str, model: str, think, limit: int | None = None) -> Path:
                     "split": split,
                     "model": model,
                     "think": think,
-                    "prompt_hash": prompt_hash(),
-                    "code_hash": code_hash(),
+                    **current_hashes(),
                     "started": started,
                 }
                 fh.write(
@@ -137,13 +211,26 @@ def rescore(path: Path) -> None:
 
 
 def load(path: Path) -> pd.DataFrame:
+    """One row per answer. False-premise items are scored by the LLM premise judge
+    (primary) when its verdicts exist; ``premise_scorer`` records which scorer set
+    ``correct``, and ``correct_pattern`` keeps the pattern rule's verdict."""
+    judged = load_premise_judgments(path)
     rows = []
     for line in path.read_text().splitlines():
         r = json.loads(line)
+        s = dict(r["score"])
+        s["correct_pattern"] = s["correct"]
+        s["premise_scorer"] = None
+        if r["question"]["category"] == "false_premise":
+            v = judged.get(r["question"]["qid"])
+            s["premise_scorer"] = "judge" if v else "pattern"
+            if v:
+                s["premise_rejected_judge"] = v["rejects_premise"] and v["with_evidence"]
+                s["correct"] = s["premise_rejected_judge"] and r["answer"]["status"] == "verified"
         rows.append(
             {
                 **{f"q_{k}": v for k, v in r["question"].items()},
-                **r["score"],
+                **s,
                 "latency_s": r["answer"]["latency_s"],
                 "status": r["answer"]["status"],
                 "retried": r["answer"]["retried"],
@@ -186,6 +273,31 @@ def summarize(df: pd.DataFrame) -> dict:
         ),
         "n": len(df),
     }
+
+
+def premise_agreement(df: pd.DataFrame) -> dict | None:
+    """Judge (primary) vs pattern (secondary) on false-premise items: raw agreement and
+    Cohen's kappa, on premise rejection and on the final correct verdict."""
+    fp = df[(df["q_category"] == "false_premise") & (df["premise_scorer"] == "judge")]
+    if fp.empty:
+        return None
+
+    def kappa(a: pd.Series, b: pd.Series) -> float:
+        a, b = a.astype(bool), b.astype(bool)
+        po = float((a == b).mean())
+        pe = a.mean() * b.mean() + (1 - a.mean()) * (1 - b.mean())
+        return float("nan") if pe == 1 else (po - pe) / (1 - pe)
+
+    out = {"items": len(fp)}
+    for name, j, p in (
+        ("rejection", fp["premise_rejected_judge"], fp["premise_rejected_pattern"]),
+        ("correct", fp["correct"], fp["correct_pattern"]),
+    ):
+        out[f"{name}_agreement"] = float((j.astype(bool) == p.astype(bool)).mean())
+        out[f"{name}_kappa"] = kappa(j, p)
+        out[f"{name}_judge_rate"] = float(j.astype(bool).mean())
+        out[f"{name}_pattern_rate"] = float(p.astype(bool).mean())
+    return out
 
 
 def worst(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
@@ -272,6 +384,7 @@ def write_report() -> Path:
                 "latency p50 (s)": s["latency_p50"],
                 "latency p95 (s)": s["latency_p95"],
                 "false premise full correction": s["false_premise_full_correction"],
+                "false premise scorer": ", ".join(sorted(df["premise_scorer"].dropna().unique())),
             }
         )
     lines += ["## Summary", "", pd.DataFrame(rows).round(3).to_markdown(index=False), ""]
@@ -293,6 +406,20 @@ def write_report() -> Path:
                     category_ci(g).round(3).to_markdown(),
                     "",
                 ]
+        agree = premise_agreement(df)
+        if agree:
+            lines += [
+                "### False premise: LLM judge (primary) vs pattern rule (secondary)",
+                "",
+                f"{agree['items']} items. Premise rejected: judge "
+                f"{agree['rejection_judge_rate']:.2f}, "
+                f"pattern {agree['rejection_pattern_rate']:.2f}; "
+                f"agreement {agree['rejection_agreement']:.2f}, Cohen's kappa "
+                f"{agree['rejection_kappa']:.2f}. Correct (rejection and grounded): judge "
+                f"{agree['correct_judge_rate']:.2f}, pattern {agree['correct_pattern_rate']:.2f}; "
+                f"agreement {agree['correct_agreement']:.2f}, kappa {agree['correct_kappa']:.2f}.",
+                "",
+            ]
         spread = paraphrase_spread(df)
         if not spread.empty:
             lines += [
@@ -371,7 +498,13 @@ def main() -> None:
     ap.add_argument("--limit", type=int)
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--rescore", action="store_true", help="re-score stored dev answers")
+    ap.add_argument("--freeze", action="store_true", help="pin --model and all hashes")
     args = ap.parse_args()
+    if args.freeze:
+        if not args.model:
+            sys.exit("--freeze needs --model")
+        freeze(args.model, THINK_DEFAULTS.get(args.model))
+        return
     if args.rescore:
         for f in sorted(RESULTS.glob("dev_*.jsonl")):
             rescore(f)
@@ -379,13 +512,7 @@ def main() -> None:
     if args.split:
         model, think = args.model, args.think
         if args.split == "test":
-            if not FROZEN.exists():
-                sys.exit("no eval/agent/frozen.json: freeze the model and prompt on dev first")
-            frozen = json.loads(FROZEN.read_text())
-            if frozen["prompt_hash"] != prompt_hash():
-                sys.exit("the system prompt changed since it was frozen; the test split is locked")
-            if frozen.get("code_hash") != code_hash():
-                sys.exit("the agent code changed since it was frozen; the test split is locked")
+            frozen = check_frozen()
             model, think = frozen["model"], frozen.get("think")
             # an incomplete test file resumes; a complete one is refused inside run()
         if model is None:

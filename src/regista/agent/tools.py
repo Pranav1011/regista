@@ -256,11 +256,13 @@ class MomentItem(BaseModel):
 class MomentsResult(BaseModel):
     match: str
     moments: list[MomentItem]
+    evidence: list[Evidence]  # the time range searched, so "none found" is citable
     notes: list[str]
 
 
 class Overview(BaseModel):
     match: str
+    evidence: list[Evidence]
     source: str
     periods: list[dict]
     frame_rate: float
@@ -428,6 +430,10 @@ class Toolbox:
                 common[team][phase] = s.value_counts().index[0] if len(s) else None
         return Overview(
             match=m.key,
+            evidence=[
+                m.evidence(p, *m.period_range(p))
+                for p in sorted(int(k) for k in m.store.manifest["periods"])
+            ],
             source=m.store.source,
             periods=periods,
             frame_rate=float(m.store.manifest["frame_rate"]),
@@ -449,7 +455,11 @@ class Toolbox:
         from_clock: str | None = None,
         to_clock: str | None = None,
     ) -> FormationResult:
-        """Formation windows (5 minutes) for a team and phase in a time range, with margins."""
+        """Formation (the team's shape, system, or setup, e.g. 4-4-2) per 5-minute window.
+
+        For a team and phase in a time range, with runner-up and margins. For line
+        height, length, or width use get_team_dimensions.
+        """
         m = self._match(match)
         segs = m.segments(from_clock, to_clock)
         f = m.store.table("formations")
@@ -501,7 +511,7 @@ class Toolbox:
             notes=[FORMATION_NOTE],
         )
 
-    def get_shape(
+    def get_team_dimensions(
         self,
         match: str,
         team: Team,
@@ -509,7 +519,10 @@ class Toolbox:
         from_clock: str | None = None,
         to_clock: str | None = None,
     ) -> ShapeResult:
-        """Team shape (median of 5-minute medians) in a time range: line height, length, width."""
+        """Team dimensions in metres (median of 5-minute medians): line height, length, width.
+
+        Not the formation; for the shape or system (e.g. 4-4-2) use get_formation.
+        """
         m = self._match(match)
         segs = m.segments(from_clock, to_clock)
         s = m.store.table("shape_windows")
@@ -775,6 +788,7 @@ class Toolbox:
         return MomentsResult(
             match=m.key,
             moments=items,
+            evidence=[m.evidence(p, a, b) for p, a, b in segs],
             notes=[
                 "Moments come from causal detectors: each used only data up to its emit "
                 "time. The start time is an estimate."
@@ -786,7 +800,7 @@ TOOL_NAMES = (
     "check_capability",
     "get_match_overview",
     "get_formation",
-    "get_shape",
+    "get_team_dimensions",
     "get_press_stats",
     "get_pass_network",
     "get_team_passing",

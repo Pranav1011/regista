@@ -18,7 +18,7 @@ from typing import Any, Protocol, get_type_hints
 
 from pydantic import BaseModel, ValidationError, create_model
 
-from regista.agent.grounding import check_numbers
+from regista.agent.grounding import check_clocks, check_numbers
 from regista.agent.tools import TOOL_NAMES, Toolbox, ToolError
 
 SYSTEM_PROMPT = """You are Regista, a football analyst. You answer questions about one match \
@@ -62,9 +62,9 @@ ERROR_RETRY_PROMPT = (
 MAX_ERROR_RETRY_ROUNDS = 3
 
 RETRY_PROMPT = (
-    "Your answer contains numbers that do not appear in the tool results: {numbers}. "
-    "Rewrite the answer using only numbers that appear in the tool results (you may round "
-    "them), or remove those numbers. Do not call more tools."
+    "Your answer has problems: {problems}. Rewrite the answer using only numbers and match "
+    "times that appear in the tool results (you may round numbers), or remove them. Do not "
+    "call more tools."
 )
 
 
@@ -178,6 +178,7 @@ class AgentAnswer(BaseModel):
     caveats: list[str]
     status: str  # "verified" or "unverified"
     ungrounded_numbers: list[str]
+    uncited_clocks: list[str] = []
     retried: bool
     model: str
     latency_s: float
@@ -206,6 +207,15 @@ def _for_model(result: Any, seen_notes: list[str]) -> Any:
     if "moments" in out:
         out["moments"] = [{k: v for k, v in m.items() if k != "evidence"} for m in out["moments"]]
     return out
+
+
+def _problems(ungrounded: list[str], uncited: list[str]) -> str:
+    parts = []
+    if ungrounded:
+        parts.append("numbers not in the tool results: " + ", ".join(ungrounded))
+    if uncited:
+        parts.append("match times outside the evidence the tools returned: " + ", ".join(uncited))
+    return "; ".join(parts)
 
 
 def echoes_error(content: str, errors: list[str]) -> bool:
@@ -335,14 +345,15 @@ class Agent:
 
         sources = [*trace.outputs, question, match]
         check = check_numbers(content, sources)
+        uncited = check_clocks(content, trace.citations, [question, *errors])
         retried = False
-        if not check.grounded and not couldnt_compute:
+        if (not check.grounded or uncited) and not couldnt_compute:
             retried = True
             messages += [
                 {"role": "assistant", "content": content},
                 {
                     "role": "user",
-                    "content": RETRY_PROMPT.format(numbers=", ".join(check.ungrounded)),
+                    "content": RETRY_PROMPT.format(problems=_problems(check.ungrounded, uncited)),
                 },
             ]
             try:
@@ -351,6 +362,7 @@ class Agent:
             except ProviderError:
                 pass  # keep the first answer; it stays unverified
             check = check_numbers(content, sources)
+            uncited = check_clocks(content, trace.citations, [question, *errors])
         if truncated:
             trace.caveats.append("The answer was cut off at the model's length limit.")
         return AgentAnswer(
@@ -361,9 +373,10 @@ class Agent:
             tools_used=trace.tools_used,
             caveats=trace.caveats,
             status="verified"
-            if check.grounded and not truncated and not couldnt_compute
+            if check.grounded and not uncited and not truncated and not couldnt_compute
             else "unverified",
             ungrounded_numbers=check.ungrounded,
+            uncited_clocks=uncited,
             retried=retried,
             model=self.provider.name,
             latency_s=round(time.perf_counter() - start, 2),

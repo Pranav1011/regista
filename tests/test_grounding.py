@@ -1,6 +1,6 @@
 """Tests for the number-grounding check."""
 
-from regista.agent.grounding import check_numbers
+from regista.agent.grounding import check_clocks, check_numbers
 
 TOOL = {
     "press_intensity": 0.4088,
@@ -41,3 +41,25 @@ def test_rounding_must_respect_written_precision():
 def test_unicode_dashes_and_spaced_stoppage_clocks_are_normalised():
     r = check_numbers("They played 4\u20112\u20113\u20111 until 45 + 2:00.", [TOOL])
     assert r.grounded, r.ungrounded
+
+
+EVIDENCE = [
+    {"period": 1, "clock_start": "10:00", "clock_end": "15:00"},
+    {"period": 2, "clock_start": "60:00", "clock_end": "65:00"},
+]
+
+
+def test_clocks_must_fall_inside_returned_evidence():
+    assert check_clocks("A change at 12:30 and at 64:00.", EVIDENCE, []) == []
+    assert check_clocks("Also at 16:00 (within a minute) but 30:00 is not.", EVIDENCE, []) == [
+        "30:00"
+    ]
+    assert check_clocks("Nothing at 45+2:00.", EVIDENCE, []) == ["45+2:00"]
+
+
+def test_question_and_error_clocks_are_exempt():
+    assert check_clocks("There is no data at 115:00.", EVIDENCE, ["formation at 115:00?"]) == []
+    assert (
+        check_clocks("The match ends at 90+4:09.", EVIDENCE, ["period 2 runs 45:00 to 90+4:09"])
+        == []
+    )

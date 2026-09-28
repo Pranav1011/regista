@@ -44,15 +44,15 @@ def test_formation_known_answer_with_evidence_and_reliability(tools):
 def test_time_ranges_are_validated(tools):
     # period 1 lasts 10 minutes, period 2 runs from 45:00 to 55:00
     first = tools.get_formation(MATCH, "home", "out", "00:00", "05:00")
-    whole_first_half = tools.get_shape(MATCH, "home", "out", "00:00", "45:00")
+    whole_first_half = tools.get_team_dimensions(MATCH, "home", "out", "00:00", "45:00")
     assert {e.period for e in whole_first_half.evidence} == {1}
     assert {w.period for w in first.windows} == {1}
-    both = tools.get_shape(MATCH, "home", "out", "02:00", "50:00")
+    both = tools.get_team_dimensions(MATCH, "home", "out", "02:00", "50:00")
     assert {e.period for e in both.evidence} == {1, 2}
     with pytest.raises(ToolError, match="outside the recorded match"):
         tools.get_formation(MATCH, "home", "out", "30:00", "40:00")
     with pytest.raises(ToolError, match="malformed"):
-        tools.get_shape(MATCH, "home", "out", "ten past", None)
+        tools.get_team_dimensions(MATCH, "home", "out", "ten past", None)
     with pytest.raises(ToolError, match="empty time range"):
         tools.get_press_stats(MATCH, "home", "05:00", "02:00")
 

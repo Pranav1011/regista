@@ -90,3 +90,46 @@ def check_numbers(answer: str, sources: list) -> GroundingResult:
         if not _matches(value, _decimals(num), percent, values):
             ungrounded.append(raw.strip())
     return GroundingResult(grounded=not ungrounded, checked=checked, ungrounded=ungrounded)
+
+
+CLOCK_TOLERANCE_S = 60.0
+
+
+def _clock_instant(clock: str) -> tuple[int, float] | None:
+    """A written match clock as (period, seconds into the period); None if malformed."""
+    from regista.clock import PERIOD_LENGTH_S, parse_clock
+
+    try:
+        period, seconds = parse_clock(clock)
+    except ValueError:
+        return None
+    if period is not None:
+        return period, seconds
+    if seconds < PERIOD_LENGTH_S:
+        return 1, seconds
+    return 2, seconds - PERIOD_LENGTH_S
+
+
+def check_clocks(answer: str, evidence: list[dict], exempt_texts: list[str]) -> list[str]:
+    """Match clocks in ``answer`` that fall outside every evidence range (with 1 min slack).
+
+    Clocks that appear verbatim in ``exempt_texts`` (the question, tool error
+    messages) are allowed: they are the user's own reference or a stated limit.
+    """
+    ranges = []
+    for ev in evidence:
+        a, b = _clock_instant(ev["clock_start"]), _clock_instant(ev["clock_end"])
+        if a and b:
+            ranges.append((ev["period"], a[1], b[1]))
+    exempt = " ".join(normalise(t) for t in exempt_texts)
+    uncited = []
+    for clock in _CLOCK.findall(normalise(answer)):
+        if clock in exempt:
+            continue
+        at = _clock_instant(clock)
+        if at is None or not any(
+            p == at[0] and lo - CLOCK_TOLERANCE_S <= at[1] <= hi + CLOCK_TOLERANCE_S
+            for p, lo, hi in ranges
+        ):
+            uncited.append(clock)
+    return uncited

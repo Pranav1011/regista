@@ -272,6 +272,27 @@ answers; number grounding 0.991; latency p50 11.4 s, p95 19.0 s. The other three
 models were not re-run on the expanded set. `eval/agent/frozen.json` now also pins
 a hash of the agent code.
 
+**Changes after that dev run, before the test run.** All made on dev and
+disclosed here; the test split was not looked at.
+- *Vocabulary fix.* Both "shape" rewordings failed because the model read
+  "shape" as the tool then called `get_shape` (line height, length, width)
+  rather than the formation. The two paraphrases are unchanged; the tool is
+  renamed `get_team_dimensions`, and `get_formation`'s description now says it
+  answers questions about a team's shape, system, or setup.
+- *Runtime citation check.* Like the number check, every match time in an answer
+  must fall within an evidence range a tool returned in that turn (one minute of
+  slack; times quoted from the question or from a tool error are exempt). A
+  failing answer is retried once, then marked unverified. `find_moments` and
+  `get_match_overview` now return the range they searched as evidence, so "no
+  moment found" is citable.
+- *False-premise scoring.* The primary scorer is now an LLM judge (gemma4:12b,
+  `eval/agent/premise_judge.py`): does the answer reject the premise, explicitly
+  or implicitly, with evidence? The pattern rule is kept as a secondary scorer,
+  and the report gives the agreement and Cohen's kappa between the two.
+- *Frozen hashes.* `frozen.json` also pins hashes of the question bank
+  (`questions.py`) and the scorers (`scoring.py`, `premise_judge.py`); the test
+  split refuses to start if any pinned hash differs.
+
 **Consequence.** Answers take about 11-19 s on a laptop, so the hosted demo shows
 pre-generated answers and free-form questions need `regista serve` locally. The
 dev set is small (38 questions, one wrong answer for the chosen model), so the

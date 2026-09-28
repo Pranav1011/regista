@@ -94,7 +94,9 @@ def fact_sheet(toolbox: Toolbox, match: str) -> dict:
         facts[f"press_{team}"] = [
             t.model_dump() for t in toolbox.get_press_stats(match, team).by_third
         ]
-        facts[f"line_height_out_{team}"] = toolbox.get_shape(match, team, "out").line_height_m
+        facts[f"line_height_out_{team}"] = toolbox.get_team_dimensions(
+            match, team, "out"
+        ).line_height_m
     return facts
 
 

@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
-from run import FROZEN, prompt_hash  # noqa: E402
+from run import check_frozen  # noqa: E402
 
 from regista import io  # noqa: E402
 from regista.agent.loop import Agent, OllamaProvider  # noqa: E402
@@ -45,11 +45,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--game", type=int, action="append", required=True)
     args = ap.parse_args()
-    if not FROZEN.exists():
-        sys.exit("no eval/agent/frozen.json: freeze the model and prompt first")
-    frozen = json.loads(FROZEN.read_text())
-    if frozen["prompt_hash"] != prompt_hash():
-        sys.exit("the system prompt changed since it was frozen")
+    frozen = check_frozen()
     provider = OllamaProvider(frozen["model"], think=frozen.get("think"))
     agent = Agent(Toolbox(io.data_dir() / "store"), provider)
     ANSWERS.mkdir(exist_ok=True)

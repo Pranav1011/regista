@@ -9,29 +9,13 @@ unanswerable, reliability.
 from __future__ import annotations
 
 import random
-import re
 from dataclasses import asdict, dataclass, field
 
-from regista.agent.grounding import normalise
 from regista.agent.tools import Toolbox, ToolError
 from regista.clock import match_clock, parse_clock
 
 TEAMS = ("home", "away")
 PHASE_TEXT = {"out": "out of possession", "in": "in possession"}
-DECLINE = re.compile(
-    r"not (?:be )?(?:available|modell?ed|possible|recorded|in the data)|"
-    r"(?:cannot|can't|unable to|no way to) (?:be )?(?:answer|determine|provide|"
-    r"know|say|tell|calculate|compute)|outside (?:of )?the (?:recorded )?(?:match|period|data)|"
-    r"(?:does not|doesn't|do not|don't) (?:have|include|contain|model|record|"
-    r"track|provide)|not (?:tracked|provided|included|supported)|anonymi[sz]ed|"
-    r"no (?:data|information|record)",
-    re.IGNORECASE,
-)
-AMBIGUITY = re.compile(
-    r"close call|low margin|small margin|narrow|uncertain|ambigu|"
-    r"runner-?up|not (?:very )?confident|noisy|could also be|or a \d-\d",
-    re.IGNORECASE,
-)
 
 
 @dataclass
@@ -110,14 +94,14 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
     # ---- lookup: line height in a half
     for team in rng.sample(TEAMS, 2):
         half, (a, b) = rng.choice([(1, ("00:00", "45:00")), (2, ("45:00", None))])
-        r = toolbox.get_shape(match, team, "out", a, b)
+        r = toolbox.get_team_dimensions(match, team, "out", a, b)
         add(
             "lookup",
             "line_height_half",
             f"What was the {team} team's defensive line height out of possession in the "
             f"{'first' if half == 1 else 'second'} half?",
             {"value": r.line_height_m, "tolerance": 1.0},
-            [["get_shape"]],
+            [["get_team_dimensions"]],
             {"period": half, "t_from": 0.0, "t_to": 1e9},
             "within 1.0 m of the tool value",
             v={"team": team, "half": "first" if half == 1 else "second"},
@@ -157,7 +141,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
         )
     # ---- comparison: higher line in a half
     half, (a, b) = rng.choice([(1, ("00:00", "45:00")), (2, ("45:00", None))])
-    vals = {t: toolbox.get_shape(match, t, "out", a, b).line_height_m for t in TEAMS}
+    vals = {t: toolbox.get_team_dimensions(match, t, "out", a, b).line_height_m for t in TEAMS}
     if None not in vals.values() and abs(vals["home"] - vals["away"]) >= 1.0:
         add(
             "comparison",
@@ -165,7 +149,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             f"Which team held a higher defensive line out of possession in the "
             f"{'first' if half == 1 else 'second'} half?",
             {"team": max(vals, key=vals.get), "values": vals},
-            [["get_shape"]],
+            [["get_team_dimensions"]],
             None,
             "answer names the team with the higher line",
             v={"half": "first" if half == 1 else "second"},
@@ -379,15 +363,6 @@ def paraphrases(qs: list[Question]) -> list[Question]:
 
 # ------------------------------------------------------------- false-premise category
 
-CORRECTION = re.compile(
-    r"not supported|premise|(?:did not|didn't|does not|doesn't|never) (?:switch|change|happen|"
-    r"occur|play|press|hold|make|use)|no (?:such|detected|record|evidence|back-?line change|"
-    r"press change|change|extra time|third)|actually|in fact|rather than|contrary|incorrect|"
-    r"not the case|not correct|was not|wasn't|were not|weren't|there (?:is|was|were) no|"
-    r"outside (?:of )?the (?:recorded )?(?:match|period|data)|only (?:two|2) (?:halves|periods)",
-    re.IGNORECASE,
-)
-
 
 def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max, rng) -> None:
     """Questions that assert something the data contradicts."""
@@ -412,7 +387,7 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
             fp(
                 "fp_back_five",
                 f"Why did the {team} team switch to a back five at {clock}?",
-                {"must_mention_any": ["no", "not"], "truth": "no back-five window"},
+                {"must_mention_any": ["no", "not"], "truth": "no formation window had a back five"},
                 [["get_formation"], ["find_moments"]],
             )
             break
@@ -426,15 +401,18 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
             fp(
                 "fp_wrong_team",
                 f"Why did the {other[m.team]} team change its pressing at {m.emit_clock}?",
-                {"must_mention_any": [m.team], "truth": f"it was {m.team}"},
+                {
+                    "must_mention_any": [m.team],
+                    "truth": f"that press change was the {m.team} team's",
+                },
                 [["find_moments"]],
             )
     # 3. extra time that does not exist
     fp(
         "fp_extra_time",
         "Why did the home team drop deep during extra time?",
-        {"must_mention_any": ["extra time", "90", "no"], "truth": "no extra time"},
-        [["get_match_overview"], ["get_shape"], ["get_formation"]],
+        {"must_mention_any": ["extra time", "90", "no"], "truth": "the match had no extra time"},
+        [["get_match_overview"], ["get_team_dimensions"], ["get_formation"]],
     )
     # 4. the wrong formation for a clear window
     clear = formations[formations["margin"] >= formations["margin"].median()]
@@ -450,7 +428,10 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
             "fp_wrong_formation",
             f"Why did the {r['team']} team play a {wrong} "
             f"{PHASE_TEXT[r['phase']]} between {a} and {b}?",
-            {"must_mention_any": [r["label"]], "truth": r["label"]},
+            {
+                "must_mention_any": [r["label"]],
+                "truth": f"the formation was {r['label']}, not {wrong}",
+            },
             [["get_formation"]],
             {"period": int(r["period"]), "t_from": float(r["t_start"]), "t_to": float(r["t_end"])},
         )
@@ -468,7 +449,10 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
             [["get_press_stats"]],
         )
     # 6. the lower line said to be higher
-    vals = {t: toolbox.get_shape(match, t, "out", "00:00", "45:00").line_height_m for t in TEAMS}
+    vals = {
+        t: toolbox.get_team_dimensions(match, t, "out", "00:00", "45:00").line_height_m
+        for t in TEAMS
+    }
     if None not in vals.values() and abs(vals["home"] - vals["away"]) >= 1.0:
         low, high = sorted(TEAMS, key=vals.get)
         fp(
@@ -476,7 +460,7 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
             f"Why did the {low} team hold a higher defensive line than the "
             f"{high} team in the first half?",
             {"must_mention_any": [high], "truth": f"{high} held the higher line"},
-            [["get_shape"]],
+            [["get_team_dimensions"]],
         )
     # 7. a moment type that never happened for a team
     for team in TEAMS:
@@ -499,7 +483,10 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
             fp(
                 "fp_top_passer",
                 f"Why did {wrong} make the most passes for the {team} team?",
-                {"must_mention_any": [players[0].player_id], "truth": players[0].player_id},
+                {
+                    "must_mention_any": [players[0].player_id],
+                    "truth": f"{players[0].player_id} made the most passes, not {wrong}",
+                },
                 [["get_team_passing"], ["get_pass_network"]],
             )
             break
@@ -507,7 +494,7 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
     fp(
         "fp_third_half",
         "What did the away team change in the third half?",
-        {"must_mention_any": ["two", "2", "no", "not"], "truth": "only two halves"},
+        {"must_mention_any": ["two", "2", "no", "not"], "truth": "the match has only two halves"},
         [["get_match_overview"]],
     )
     # 10. a real moment moved to the wrong time
@@ -518,117 +505,12 @@ def false_premises(add, toolbox: Toolbox, match: str, formations, moments, t_max
         fp(
             "fp_wrong_time",
             f"Why did the {m.team} team's pressing change at {wrong_clock}?",
-            {"must_mention_any": [m.emit_clock], "truth": f"detected at {m.emit_clock}"},
+            {
+                "must_mention_any": [m.emit_clock],
+                "truth": f"it was detected at {m.emit_clock}, not {wrong_clock}",
+            },
             [["find_moments"]],
         )
 
 
-# ------------------------------------------------------------------------- scoring
-
-
-def _numbers(text: str) -> list[float]:
-    return [float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", text)]
-
-
-def score(q: dict, answer: dict, toolbox: Toolbox) -> dict:
-    """Correctness, tool selection, citation validity, abstention for one answer."""
-    text = normalise(answer["answer_text"])
-    used = [t["tool"] for t in answer["tools_used"]]
-    g = q["gold"]
-    tmpl = q["template"]
-    category = q.get("extra", {}).get("base_category", q["category"])
-    full_correction = None
-    if category == "false_premise":
-        # correct = the premise is explicitly rejected, with grounded numbers; "full
-        # correction" additionally names what the data shows (team, time, player, label)
-        rejected = bool(CORRECTION.search(text))
-        full_correction = rejected and any(t.lower() in text.lower() for t in g["must_mention_any"])
-        correct = rejected and answer["status"] == "verified"
-    elif category == "unanswerable":
-        # a correct refusal declines and states only numbers the tools returned
-        correct = bool(DECLINE.search(text)) and answer["status"] == "verified"
-    elif tmpl == "formation_window":
-        correct = g["label"] in text
-    elif tmpl == "formation_at_press_change":
-        correct = any(label in text for label in g["labels"])
-    elif tmpl == "close_call_formation":
-        correct = bool(AMBIGUITY.search(text))
-    elif tmpl == "line_height_half":
-        correct = g["value"] is not None and any(
-            abs(v - g["value"]) <= g["tolerance"] for v in _numbers(text)
-        )
-    elif tmpl == "top_pass_pair":
-        correct = all(p in text for p in g["players"])
-    elif tmpl in ("press_after", "higher_line"):
-        other = "away" if g["team"] == "home" else "home"
-        low = text.lower()
-        correct = g["team"] in low and (other not in low or low.index(g["team"]) < low.index(other))
-    elif tmpl.startswith("first_"):
-        want = _clock_seconds(g["clock"]) if "+" not in g["clock"] else None
-        clocks = re.findall(r"\d{1,3}\+\d+(?::\d{2})?|\d{1,3}:\d{2}", text)
-        correct = any(
-            (c == g["clock"])
-            or (
-                want is not None
-                and "+" not in c
-                and abs(_clock_seconds(c) - want) <= 60 * g["tolerance_min"]
-            )
-            for c in clocks
-        )
-    elif tmpl == "top_passer_completion":
-        pct = [v for v in _numbers(text) if 0 <= v <= 100]
-        correct = any(
-            acc["player"] in text
-            and any(
-                abs(v - 100 * acc["completion"]) <= g["tolerance_pct"]
-                or abs(100 * v - 100 * acc["completion"]) <= g["tolerance_pct"]
-                for v in pct
-            )
-            for acc in g["accepted"]
-        )
-    else:
-        raise ValueError(f"no scorer for template {tmpl}")
-
-    alternatives = q["expected_tools"]
-    tools_ok = any(set(alt) <= set(used) for alt in alternatives) if alternatives else True
-    citations = answer["citations"]
-    valid = _citations_valid(citations, q, toolbox)
-    return {
-        "full_correction": full_correction,
-        "correct": bool(correct),
-        "tool_selection": tools_ok,
-        "citation_valid": valid,
-        "grounded": answer["status"] == "verified",
-        "abstained": bool(DECLINE.search(text)),
-    }
-
-
-def _citations_valid(citations: list[dict], q: dict, toolbox: Toolbox) -> bool | None:
-    """Cited frames exist in the match; one citation overlaps the question's range, if any."""
-    if q.get("extra", {}).get("base_category", q["category"]) == "unanswerable":
-        return None
-    if not citations:
-        return False
-    m = toolbox._match(q["match"])
-    ft = m.frame_times
-    for c in citations:
-        if c.get("match") != q["match"]:
-            return False
-        frames = ft[ft["period"] == c["period"]]["frame"]
-        if frames.empty or c["frame_start"] < frames.min() or c["frame_end"] > frames.max():
-            return False
-    rng = q.get("gold_range")
-    if rng is None:
-        return True
-    for c in citations:
-        if c["period"] != rng["period"]:
-            continue
-        sel = ft[
-            (ft["period"] == c["period"]) & ft["frame"].between(c["frame_start"], c["frame_end"])
-        ]
-        if len(sel) and sel["t"].max() >= rng["t_from"] and sel["t"].min() <= rng["t_to"]:
-            return True
-    return False
-
-
-__all__ = ["Question", "ToolError", "generate", "score"]
+__all__ = ["Question", "ToolError", "generate"]

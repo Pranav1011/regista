@@ -54,8 +54,8 @@ use its absolute path (`which uv`) as `command`.
 |---|---|
 | `list_matches` | Matches that have a store |
 | `get_match_overview` | Periods and clocks, pass counts, detected moments, typical formations |
-| `get_formation` | 5-minute formation windows for a team and phase, with runner-up, margin, and a "close call" flag |
-| `get_shape` | Line height, length, width, compactness (median of 5-minute medians) |
+| `get_formation` | Formation (shape / system / setup) per 5-minute window for a team and phase, with runner-up, margin, and a "close call" flag |
+| `get_team_dimensions` | Team dimensions in metres: line height, length, width, compactness (median of 5-minute medians) |
 | `get_press_stats` | Press intensity (defender within 5 yd of the carrier), overall and by pitch third |
 | `get_pass_network` | Pass counts between teammates (inferred from tracking) and mean positions |
 | `get_team_passing` | A team's players ranked by pass attempts, with completion share |
