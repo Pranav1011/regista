@@ -33,19 +33,10 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from _common import EVAL_DIR, TEST_GAME, TRAIN_GAMES, load_params, metrica_game
-from pass_detection import predict
 from scipy.optimize import minimize
 
 from regista.analytics.calibration import fit_isotonic, fit_platt, mean_log_loss
-from regista.analytics.kinematics import frame_interval
-from regista.analytics.passing_options import (
-    build_scene,
-    default_params,
-    pitch_control_at,
-    to_scene_coords,
-)
-from regista.analytics.possession import release_features
-from regista.analytics.shape import goalkeepers
+from regista.pipeline import pass_attempts, score_attempts
 from regista.schema import PITCH_LENGTH_M, PITCH_WIDTH_M
 
 FAILED_PASS_MARKERS = ("INTERCEPTION", "CROSS", "DEEP BALL", "THROUGH BALL", "GOAL KICK")
@@ -128,35 +119,8 @@ def labelled_attempts(events: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 
 
 def inferred_attempts(frames: pd.DataFrame, params: dict) -> pd.DataFrame:
-    """Pass attempts from v2 detections: passes, plus turnovers with a ball release."""
-    owner, detected, _ = predict(frames, "v2", params)
-    pp = params["v2"]
-    dt = frame_interval(frames)
-    turnovers = detected[detected["kind"] == "turnover"]
-    feats = release_features(frames, turnovers, round(pp["release_back_s"] / dt),
-                             round(pp["release_fwd_s"] / dt))  # fmt: skip
-    ok = feats[(feats["speed"] >= pp["release_speed"]) & (feats["cos"] >= pp["release_cos"])]
-    release = ok.groupby("pass_idx")["frame"].min()
-    failed = turnovers.loc[turnovers.index.intersection(release.index)].copy()
-    failed["start_frame"] = release.loc[failed.index].to_numpy()
-    attempts = pd.concat([detected[detected["kind"] == "pass"], failed])
-
-    ball = frames[frames["team"] == "ball"].set_index(["period", "frame"])[["x", "y"]]
-    start = ball.reindex(pd.MultiIndex.from_arrays([attempts["period"], attempts["start_frame"]]))
-    end = ball.reindex(pd.MultiIndex.from_arrays([attempts["period"], attempts["end_frame"]]))
-    out = pd.DataFrame(
-        {
-            "period": attempts["period"].astype(int).to_numpy(),
-            "frame": attempts["start_frame"].astype(int).to_numpy(),
-            "team": attempts["team"].astype(str).to_numpy(),
-            "start_x": start["x"].to_numpy(),
-            "start_y": start["y"].to_numpy(),
-            "end_x": end["x"].to_numpy(),
-            "end_y": end["y"].to_numpy(),
-            "completed": (attempts["kind"] == "pass").astype(int).to_numpy(),
-        }
-    )
-    return out.dropna(subset=["start_x", "end_x"]).reset_index(drop=True)
+    """Pass attempts from v2 detections (see ``regista.pipeline.pass_attempts``)."""
+    return pass_attempts(frames, params)
 
 
 FAILURE_CATEGORIES = (
@@ -209,31 +173,6 @@ def classify_failures(attempts: pd.DataFrame, events: pd.DataFrame) -> pd.Series
                 break
         labels.append(label)
     return pd.Series(labels, index=attempts.index, dtype="string")
-
-
-def score_attempts(frames: pd.DataFrame, attempts: pd.DataFrame) -> pd.DataFrame:
-    """Add pitch control at the target, pass length, nearest-defender distance, and time."""
-    p = default_params()
-    gk = goalkeepers(frames).set_index(["period", "team"])["gk_id"]
-    indexed = frames.set_index(["period", "frame"]).sort_index()
-    times = indexed["t"].groupby(level=[0, 1]).first()
-    pcs, lengths, nearest = [], [], []
-    for a in attempts.itertuples():
-        rows = indexed.loc[(a.period, a.frame)].reset_index()
-        gks = {team: gk.get((a.period, team)) for team in ("home", "away")}
-        scene = build_scene(rows, a.period, a.frame, a.team, gks,
-                            ball_xy=np.array([a.start_x, a.start_y]), p=p)  # fmt: skip
-        target = to_scene_coords(np.array([a.end_x, a.end_y]), a.team)
-        pcs.append(pitch_control_at(target, scene, p))
-        lengths.append(float(np.hypot(a.end_x - a.start_x, a.end_y - a.start_y)))
-        d = np.linalg.norm(scene.def_pos - target, axis=1)
-        nearest.append(float(d.min()) if len(d) else np.nan)
-    out = attempts.copy()
-    out["pitch_control"] = pcs
-    out["length"] = lengths
-    out["nearest_defender"] = nearest
-    out["t"] = times.reindex(pd.MultiIndex.from_arrays([out["period"], out["frame"]])).to_numpy()
-    return out
 
 
 @dataclass

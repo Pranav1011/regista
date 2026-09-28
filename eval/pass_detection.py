@@ -12,15 +12,10 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from _common import TEST_GAME, load_params, metrica_game, true_passes, v2_owner
+from _common import TEST_GAME, load_params, metrica_game, true_passes
 
-from regista.analytics.kinematics import frame_interval
-from regista.analytics.possession import (
-    ball_owner,
-    detect_passes,
-    detect_passes_v2,
-    score_passes,
-)
+from regista.analytics.possession import score_passes
+from regista.pipeline import detect
 
 CONTEXT_FRAMES = 25  # 1 s at 25 fps, used to describe what surrounds a failure
 
@@ -74,31 +69,7 @@ def _fp_reason(row, events: pd.DataFrame) -> str:
     return f"near a labelled {near.iloc[0]['type']} event, not a PASS"
 
 
-def predict(
-    frames: pd.DataFrame, version: str, params: dict
-) -> tuple[pd.DataFrame, pd.DataFrame, float]:
-    """(owner table, detected passes and turnovers, radius used) for one match."""
-    if version == "v1":
-        pp = params["v1"]["possession"]
-        radius = pp["radius_m"]
-        owner = ball_owner(frames, radius, pp["max_ball_speed"])
-        return owner, detect_passes(owner, pp["min_hold_frames"], pp["max_gap_frames"]), radius
-    if version == "v2":
-        pp = params["v2"]
-        owner, radius = v2_owner(frames, params)
-        dt = frame_interval(frames)
-        detected = detect_passes_v2(
-            frames,
-            owner,
-            pp["min_hold_frames"],
-            pp["max_gap_frames"],
-            pp["release_speed"],
-            pp["release_cos"],
-            back_frames=round(pp["release_back_s"] / dt),
-            fwd_frames=round(pp["release_fwd_s"] / dt),
-        )
-        return owner, detected, radius
-    raise ValueError(f"unknown pass detector version {version!r}")
+predict = detect  # the frozen pipeline lives in regista.pipeline
 
 
 def evaluate(version: str, game: int = TEST_GAME, labels: str = "corrected") -> PassEval:

@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
+from regista import io
 from regista.ingest._kloppy import IngestResult
+from regista.schema import Source
+
+DEFAULT_PARAMS = Path("eval/params_phase1.json")
+DEFAULT_CALIBRATION = Path("eval/calibration_phase1.json")
 
 app = typer.Typer(help="Regista: football match intelligence.", no_args_is_help=True)
 ingest_app = typer.Typer(help="Convert open data into canonical frames.", no_args_is_help=True)
@@ -43,6 +50,37 @@ def ingest_skillcorner(
     from regista.ingest import skillcorner
 
     _report(skillcorner.ingest(match))
+
+
+@app.command("build-store")
+def build_store_cmd(
+    source: str = typer.Option(..., help="metrica or skillcorner."),
+    game: int = typer.Option(None, help="Metrica sample game number."),
+    match: str = typer.Option(None, help="SkillCorner match id."),
+    params: Path = typer.Option(DEFAULT_PARAMS, help="Frozen pipeline parameters."),
+    calibration: Path = typer.Option(DEFAULT_CALIBRATION, help="Calibrator."),
+) -> None:
+    """Precompute a match store under data/store/<source>/<match_id>/."""
+    import json
+
+    from regista.analytics.kinematics import add_velocities
+    from regista.store import build_store
+
+    src = Source(source)
+    if src == Source.METRICA:
+        if game is None:
+            raise typer.BadParameter("--game is required for metrica")
+        match_id = str(game)
+    elif src == Source.SKILLCORNER:
+        if match is None:
+            raise typer.BadParameter("--match is required for skillcorner")
+        match_id = match
+    else:
+        raise typer.BadParameter(f"unsupported source {source!r}")
+    frames = add_velocities(io.read_frames(src, match_id))
+    path = build_store(frames, json.loads(params.read_text()), json.loads(calibration.read_text()),
+                       src.value, match_id, io.data_dir() / "store")  # fmt: skip
+    typer.echo(f"wrote store to {path}")
 
 
 if __name__ == "__main__":

@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 
 from regista import io
-from regista.analytics.kinematics import add_velocities, frame_interval
-from regista.analytics.possession import ball_owner, match_radius, team_in_possession
+from regista.analytics.kinematics import add_velocities
+from regista.pipeline import TUNED_FPS, possession_phase, scaled_frames, v2_owner  # noqa: F401
 from regista.schema import Source
 
 EVAL_DIR = Path(__file__).resolve().parent
@@ -20,7 +20,6 @@ REPORTS_DIR = EVAL_DIR / "reports"
 
 TRAIN_GAMES = (1, 2)
 TEST_GAME = 3
-TUNED_FPS = 25.0  # Metrica frame rate; frame-count parameters were tuned at this rate
 
 # Every match in SkillCorner's open data (github.com/SkillCorner/opendata, MIT).
 SKILLCORNER_MATCHES = (
@@ -119,22 +118,3 @@ def skillcorner_match(match_id: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     ensure_skillcorner(match_id)
     frames = add_velocities(io.read_frames(Source.SKILLCORNER, match_id))
     return frames, io.read_players(Source.SKILLCORNER, match_id)
-
-
-def scaled_frames(n_frames_at_tuned_fps: int | None, frames: pd.DataFrame) -> int | None:
-    """Convert a frame count tuned at 25 fps to the same duration at this data's rate."""
-    if n_frames_at_tuned_fps is None:
-        return None
-    return max(int(round(n_frames_at_tuned_fps / TUNED_FPS / frame_interval(frames))), 1)
-
-
-def v2_owner(frames: pd.DataFrame, params: dict) -> tuple[pd.DataFrame, float]:
-    """Frame-level owner with the v2 per-match radius; returns (owner, radius)."""
-    radius = match_radius(frames, params["v2"]["radius_quantile"])
-    return ball_owner(frames, radius, params["v2"]["max_ball_speed"]), radius
-
-
-def possession_phase(frames: pd.DataFrame, params: dict) -> pd.DataFrame:
-    """Per-frame team in possession, using the v2 owner and its max gap."""
-    owner, _ = v2_owner(frames, params)
-    return team_in_possession(owner, scaled_frames(params["v2"]["max_gap_frames"], frames))
