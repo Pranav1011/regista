@@ -13,6 +13,9 @@ Tables:
 - ``network_nodes`` / ``network_edges``: full-match pass network per team
 - ``pressure``: per carrier frame, nearest defender and defenders within 5 yd
 - ``press_windows``: press intensity per pressing team, window, and pitch third
+- ``stream_windows``: causal per-minute trailing-window features (formation state,
+  press intensity, line height) - what a live viewer may show at each time
+- ``moments``: alerts from the frozen causal detectors (evidence as JSON)
 """
 
 from __future__ import annotations
@@ -34,6 +37,7 @@ from regista.analytics.passing_options import build_scene, default_params, passi
 from regista.analytics.possession import team_in_possession
 from regista.analytics.pressing import press_windows, pressure_frames
 from regista.analytics.shape import goalkeepers, shape_windows, team_shape
+from regista.moments import DetectorConfig, StreamConfig, detect_moments, stream_windows
 from regista.pipeline import (
     detect,
     pass_attempts,
@@ -47,9 +51,11 @@ WINDOW_S = 300.0
 STORE_FORMAT = 1
 
 
-def config_hash(params: dict, calibration: dict) -> str:
-    """Stable hash of the parameters and calibrator a store was built with."""
-    blob = json.dumps({"params": params, "calibration": calibration}, sort_keys=True)
+def config_hash(params: dict, calibration: dict, moments_config: dict) -> str:
+    """Stable hash of the parameters, calibrator, and detector config a store was built with."""
+    blob = json.dumps(
+        {"params": params, "calibration": calibration, "moments": moments_config}, sort_keys=True
+    )
     return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
@@ -84,7 +90,11 @@ def _pass_options(frames: pd.DataFrame, moments: pd.DataFrame, display) -> pd.Da
 
 
 def compute_tables(
-    frames: pd.DataFrame, params: dict, calibration: dict, window_s: float = WINDOW_S
+    frames: pd.DataFrame,
+    params: dict,
+    calibration: dict,
+    moments_config: dict,
+    window_s: float = WINDOW_S,
 ) -> dict[str, pd.DataFrame]:
     """All store tables for one match, computed directly (no I/O)."""
     frames = validate_frames(frames)
@@ -111,6 +121,9 @@ def compute_tables(
     formations, roles = detect_formations(shapes)
     nodes = node_positions(frames, phase)
     pressure = pressure_frames(frames, owner)
+    stream = stream_windows(frames, params, StreamConfig(**moments_config["stream"]))
+    moments = detect_moments(stream, DetectorConfig(**moments_config["detectors"]))
+    moments = moments.assign(evidence=moments["evidence"].map(json.dumps))
     edges = pass_edges(detected[detected["kind"] == "pass"])
     return {
         "frames": frames,
@@ -125,6 +138,8 @@ def compute_tables(
         "network_edges": edges,
         "pressure": pressure,
         "press_windows": press_windows(pressure, window_s),
+        "stream_windows": stream,
+        "moments": moments,
         "_radius": pd.DataFrame({"radius_m": [radius]}),
     }
 
@@ -133,13 +148,14 @@ def build_store(
     frames: pd.DataFrame,
     params: dict,
     calibration: dict,
+    moments_config: dict,
     source: str,
     match_id: str,
     root: Path,
     window_s: float = WINDOW_S,
 ) -> Path:
     """Compute and write one match's store; returns its directory."""
-    tables = compute_tables(frames, params, calibration, window_s)
+    tables = compute_tables(frames, params, calibration, moments_config, window_s)
     radius = float(tables.pop("_radius")["radius_m"].iat[0])
     out = Path(root) / source / match_id
     out.mkdir(parents=True, exist_ok=True)
@@ -148,7 +164,7 @@ def build_store(
     manifest = {
         "store_format": STORE_FORMAT,
         "regista_version": __version__,
-        "config_hash": config_hash(params, calibration),
+        "config_hash": config_hash(params, calibration, moments_config),
         "source": source,
         "match_id": match_id,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),

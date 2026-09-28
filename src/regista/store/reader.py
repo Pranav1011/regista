@@ -18,7 +18,13 @@ class StoreError(RuntimeError):
 class Store:
     """One match's store. Tables are exposed as DuckDB views named after the parquet files."""
 
-    def __init__(self, path: Path, params: dict | None = None, calibration: dict | None = None):
+    def __init__(
+        self,
+        path: Path,
+        params: dict | None = None,
+        calibration: dict | None = None,
+        moments_config: dict | None = None,
+    ):
         self.path = Path(path)
         manifest_path = self.path / "manifest.json"
         if not manifest_path.exists():
@@ -27,8 +33,8 @@ class Store:
         if self.manifest.get("store_format") != STORE_FORMAT:
             raise StoreError(f"{self.path}: store format {self.manifest.get('store_format')}, "
                              f"expected {STORE_FORMAT}; rebuild it")  # fmt: skip
-        if params is not None and calibration is not None:
-            expected = config_hash(params, calibration)
+        if params is not None and calibration is not None and moments_config is not None:
+            expected = config_hash(params, calibration, moments_config)
             built = self.manifest["config_hash"]
             if built != expected:
                 raise StoreError(

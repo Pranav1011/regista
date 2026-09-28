@@ -12,6 +12,7 @@ from regista.schema import Source
 
 DEFAULT_PARAMS = Path("eval/params_phase1.json")
 DEFAULT_CALIBRATION = Path("eval/calibration_phase1.json")
+DEFAULT_MOMENTS = Path("eval/params_phase2.json")
 
 app = typer.Typer(help="Regista: football match intelligence.", no_args_is_help=True)
 ingest_app = typer.Typer(help="Convert open data into canonical frames.", no_args_is_help=True)
@@ -59,6 +60,7 @@ def build_store_cmd(
     match: str = typer.Option(None, help="SkillCorner match id."),
     params: Path = typer.Option(DEFAULT_PARAMS, help="Frozen pipeline parameters."),
     calibration: Path = typer.Option(DEFAULT_CALIBRATION, help="Calibrator."),
+    moments: Path = typer.Option(DEFAULT_MOMENTS, help="Frozen detector configuration."),
 ) -> None:
     """Precompute a match store under data/store/<source>/<match_id>/."""
     import json
@@ -78,8 +80,15 @@ def build_store_cmd(
     else:
         raise typer.BadParameter(f"unsupported source {source!r}")
     frames = add_velocities(io.read_frames(src, match_id))
-    path = build_store(frames, json.loads(params.read_text()), json.loads(calibration.read_text()),
-                       src.value, match_id, io.data_dir() / "store")  # fmt: skip
+    path = build_store(
+        frames,
+        json.loads(params.read_text()),
+        json.loads(calibration.read_text()),
+        json.loads(moments.read_text()),
+        src.value,
+        match_id,
+        io.data_dir() / "store",
+    )
     typer.echo(f"wrote store to {path}")
 
 

@@ -14,21 +14,22 @@ from regista.store.reader import StoreError
 REPO = Path(__file__).resolve().parent.parent
 PARAMS = json.loads((REPO / "eval" / "params_phase1.json").read_text())
 CALIBRATION = json.loads((REPO / "eval" / "calibration_phase1.json").read_text())
+MOMENTS = json.loads((REPO / "eval" / "params_phase2.json").read_text())
 
 
 @pytest.fixture(scope="module")
 def built(tmp_path_factory):
     frames = make_match(MatchSpec(period_s=90.0))
     root = tmp_path_factory.mktemp("store")
-    path = build_store(frames, PARAMS, CALIBRATION, "synthetic", "m1", root, window_s=60.0)
-    direct = compute_tables(frames, PARAMS, CALIBRATION, window_s=60.0)
+    path = build_store(frames, PARAMS, CALIBRATION, MOMENTS, "synthetic", "m1", root, window_s=60.0)
+    direct = compute_tables(frames, PARAMS, CALIBRATION, MOMENTS, window_s=60.0)
     direct.pop("_radius")
     return path, direct
 
 
 def test_every_table_reads_back_equal_to_direct_computation(built):
     path, direct = built
-    store = Store(path, PARAMS, CALIBRATION)
+    store = Store(path, PARAMS, CALIBRATION, MOMENTS)
     assert set(store.manifest["tables"]) == set(direct)
     for name, expected in direct.items():
         got = store.table(name)
@@ -62,7 +63,7 @@ def test_store_rejects_different_parameters(built):
     changed = json.loads(json.dumps(PARAMS))
     changed["v2"]["radius_quantile"] = 0.5
     with pytest.raises(StoreError, match="different parameters"):
-        Store(path, changed, CALIBRATION)
+        Store(path, changed, CALIBRATION, MOMENTS)
 
 
 def test_missing_store_raises(tmp_path):

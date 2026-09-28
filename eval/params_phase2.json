@@ -1,0 +1,26 @@
+{
+  "tuned_on": [
+    1,
+    2
+  ],
+  "stream": {
+    "window_s": 300.0,
+    "step_s": 60.0,
+    "context_s": 1.0,
+    "min_onsets": 30,
+    "radius_prior_m": 0.5
+  },
+  "detectors": {
+    "persistence_min": 3,
+    "min_margin": 0.055,
+    "press_delta": 0.27,
+    "line_delta_m": 14.0,
+    "window_s": 300.0,
+    "step_s": 60.0
+  },
+  "target_per_type": 2.0,
+  "train_alerts_per_match": {
+    "1": 7,
+    "2": 5
+  }
+}
