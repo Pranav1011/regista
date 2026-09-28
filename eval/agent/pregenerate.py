@@ -1,0 +1,90 @@
+"""Pre-generate agent answers for the hosted viewer's suggested questions.
+
+Uses the frozen model and prompt (eval/agent/frozen.json). Answers are written to
+eval/agent/answers/<viewer-id>.json (committed, since the hosted demo is static
+and cannot run a model) and copied into the viewer data by `regista export-viewer`.
+Each answer keeps its verification status and citations.
+
+  uv run python eval/agent/pregenerate.py --game 1 --game 2 --game 3
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))
+
+from run import FROZEN, prompt_hash  # noqa: E402
+
+from regista import io  # noqa: E402
+from regista.agent.loop import Agent, OllamaProvider  # noqa: E402
+from regista.agent.tools import Toolbox  # noqa: E402
+
+ANSWERS = HERE / "answers"
+SUGGESTED = (
+    "What formation did each team use without the ball, and how clear-cut was it?",
+    "Which team pressed more intensely in the second half?",
+    "When did either team change its back line, according to the detectors?",
+    "How high was each team's defensive line out of possession in the first half?",
+    "Which home player made the most passes, and how many did they complete?",
+    "Which away player made the most passes, and how many did they complete?",
+    "What tactical moments did Regista detect after 60:00?",
+    "In which third did the away team press most?",
+    "What was the home team's formation in possession between 60:00 and 65:00?",
+    "What was the expected goals (xG) for each team?",
+)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--game", type=int, action="append", required=True)
+    args = ap.parse_args()
+    if not FROZEN.exists():
+        sys.exit("no eval/agent/frozen.json: freeze the model and prompt first")
+    frozen = json.loads(FROZEN.read_text())
+    if frozen["prompt_hash"] != prompt_hash():
+        sys.exit("the system prompt changed since it was frozen")
+    provider = OllamaProvider(frozen["model"], think=frozen.get("think"))
+    agent = Agent(Toolbox(io.data_dir() / "store"), provider)
+    ANSWERS.mkdir(exist_ok=True)
+    try:
+        for game in args.game:
+            match = f"metrica/{game}"
+            items = []
+            for q in SUGGESTED:
+                a = agent.answer(q, match)
+                items.append(
+                    {
+                        "question": q,
+                        "answer_text": a.answer_text,
+                        "status": a.status,
+                        "citations": a.citations,
+                        "caveats": a.caveats,
+                    }
+                )
+                print(f"{match} [{a.status}] {q}")
+            out = ANSWERS / f"metrica-{game}.json"
+            out.write_text(
+                json.dumps(
+                    {
+                        "model": frozen["model"],
+                        "generated": time.strftime("%Y-%m-%d"),
+                        "items": items,
+                    },
+                    indent=1,
+                )
+                + "\n"
+            )
+            print(f"wrote {out}")
+    finally:
+        provider.unload()
+
+
+if __name__ == "__main__":
+    main()

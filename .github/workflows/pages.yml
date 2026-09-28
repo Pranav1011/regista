@@ -1,0 +1,47 @@
+name: viewer-pages
+# Builds the static viewer from open data and publishes it to GitHub Pages.
+# Manual trigger only: enable Pages (Settings -> Pages -> Source: GitHub Actions),
+# then run this workflow from the Actions tab.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev
+      - name: Ingest Metrica sample games (open data)
+        run: for g in 1 2 3; do uv run regista ingest metrica --game $g; done
+      - name: Build match stores
+        run: for g in 1 2 3; do uv run regista build-store --source metrica --game $g; done
+      - name: Export viewer data (pre-generated answers are committed in eval/agent/answers)
+        run: uv run regista export-viewer
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: viewer/package-lock.json
+      - name: Build viewer
+        working-directory: viewer
+        run: npm ci && npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: viewer/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
