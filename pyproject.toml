@@ -15,6 +15,8 @@ dependencies = [
   "matplotlib",
   "mplsoccer",
   "typer",
+  "duckdb",
+  "pydantic>=2",
 ]
 
 [project.scripts]
@@ -23,8 +25,8 @@ regista = "regista.cli:app"
 [project.optional-dependencies]
 # Phase 3. Both detectors are installed so they can be benchmarked head to head.
 vision = ["ultralytics", "rfdetr", "supervision", "opencv-python-headless"]
-# Phase 2
-agent = ["mcp"]
+# Phase 2: MCP server, local agent loop (Ollama), local viewer server
+agent = ["mcp", "ollama", "fastapi", "uvicorn"]
 
 [dependency-groups]
 dev = [

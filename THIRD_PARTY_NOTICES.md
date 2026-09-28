@@ -14,6 +14,12 @@ Re-check terms before reuse elsewhere.
 | [roboflow/sports](https://github.com/roboflow/sports) | MIT | verified 2026-09-27 | Phase 3 reference (team clustering, pitch keypoints, radar) |
 | [roboflow/supervision](https://github.com/roboflow/supervision) | MIT | verified 2026-09-27 | Phase 3 dependency (tracking, annotation) |
 | [SoccerNet/sn-gamestate](https://github.com/SoccerNet/sn-gamestate) + [TrackLab](https://github.com/TrackingLaboratory/tracklab) | GPL-3.0 (sn-gamestate), MIT (TrackLab) | verified 2026-09-27 | Phase 3 benchmark harness only; keep outside `src/` |
+| [duckdb/duckdb](https://github.com/duckdb/duckdb) | MIT | verified 2026-09-27 | Phase 2 match store queries |
+| [pydantic/pydantic](https://github.com/pydantic/pydantic) | MIT | verified 2026-09-27 | Phase 2 typed tool inputs and outputs |
+| [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | MIT | verified 2026-09-27 | Phase 2 MCP server |
+| [ollama/ollama-python](https://github.com/ollama/ollama-python) | MIT | verified 2026-09-27 | Phase 2 local model client |
+| [fastapi/fastapi](https://github.com/fastapi/fastapi) | MIT | verified 2026-09-27 | Phase 2 local viewer server (`regista serve`) |
+| [encode/uvicorn](https://github.com/encode/uvicorn) | BSD-3-Clause | verified 2026-09-27 | Phase 2 local viewer server |
 | [mplsoccer](https://github.com/andrewRowlinson/mplsoccer) | MIT | verified 2026-09-27 | Pitch plots |
 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 | verified 2026-09-27 | Phase 3 detector candidate. This is why the repo itself is AGPL-3.0 |
 
