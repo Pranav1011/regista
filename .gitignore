@@ -26,3 +26,4 @@ outputs/
 viewer/public/data/
 viewer/node_modules/
 viewer/dist/
+.DS_Store

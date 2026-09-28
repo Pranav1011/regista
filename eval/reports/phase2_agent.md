@@ -5,12 +5,12 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 ## Summary
 
-| split   | model       |   questions |   accuracy |   tool selection |   citation validity |   number grounding |   abstention accuracy |   false abstention |   latency p50 (s) |   latency p95 (s) |   false premise full correction |
-|:--------|:------------|------------:|-----------:|-----------------:|--------------------:|-------------------:|----------------------:|-------------------:|------------------:|------------------:|--------------------------------:|
-| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |             15.37 |            29.44  |                         nan     |
-| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |             15.88 |            48.587 |                         nan     |
-| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |              5.8  |            11.32  |                         nan     |
-| dev     | qwen3.5:9b  |         117 |      0.906 |            0.897 |               0.901 |              0.991 |                   1   |              0.112 |             11.35 |            19.02  |                           0.474 |
+| split   | model       |   questions |   accuracy |   tool selection |   citation validity |   number grounding |   abstention accuracy |   false abstention |   latency p50 (s) |   latency p95 (s) |   false premise full correction | false premise scorer   |
+|:--------|:------------|------------:|-----------:|-----------------:|--------------------:|-------------------:|----------------------:|-------------------:|------------------:|------------------:|--------------------------------:|:-----------------------|
+| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |             15.37 |            29.44  |                         nan     |                        |
+| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |             15.88 |            48.587 |                         nan     |                        |
+| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |              5.8  |            11.32  |                         nan     |                        |
+| dev     | qwen3.5:9b  |         124 |      0.903 |            0.939 |               0.981 |              0.968 |                   1   |              0.096 |              9.86 |            15.732 |                           0.389 | pattern                |
 
 ## dev / gemma4:12b: accuracy per category
 
@@ -49,11 +49,11 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 | q_category    |   questions |   accuracy |   tool_selection |
 |:--------------|------------:|-----------:|-----------------:|
-| comparison    |           4 |      1     |            1     |
-| false_premise |          19 |      0.684 |            0.737 |
+| comparison    |           6 |      1     |            1     |
+| false_premise |          18 |      0.611 |            0.722 |
 | lookup        |          10 |      1     |            1     |
 | multi_step    |           4 |      1     |            1     |
-| paraphrase    |          60 |      0.917 |            0.9   |
+| paraphrase    |          66 |      0.924 |            0.97  |
 | reliability   |           6 |      1     |            1     |
 | temporal      |           4 |      1     |            1     |
 | unanswerable  |          10 |      1     |            1     |
@@ -62,33 +62,34 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 | q_template                |   original |   rewording 1 |   rewording 2 |   rewording 3 |   spread |
 |:--------------------------|-----------:|--------------:|--------------:|--------------:|---------:|
-| close_call_formation      |          1 |           1   |             0 |             1 |      1   |
-| first_back_line_change    |          1 |           1   |             1 |             1 |      0   |
-| first_press_change        |          1 |           1   |             1 |             1 |      0   |
-| formation_at_press_change |          1 |           1   |             0 |             1 |      1   |
-| formation_window          |          1 |           1   |             1 |             1 |      0   |
-| line_height_half          |          1 |           1   |             1 |             1 |      0   |
-| press_after               |          1 |           1   |             1 |             1 |      0   |
-| top_pass_pair             |          1 |           0.5 |             1 |             1 |      0.5 |
-| top_passer_completion     |          1 |           1   |             1 |             1 |      0   |
-| xg                        |          1 |           1   |             1 |             1 |      0   |
+| close_call_formation      |          1 |           1   |           1   |           1   |      0   |
+| first_back_line_change    |          1 |           1   |           1   |           1   |      0   |
+| first_press_change        |          1 |           1   |           1   |           1   |      0   |
+| formation_at_press_change |          1 |           1   |           1   |           1   |      0   |
+| formation_window          |          1 |           1   |           1   |           1   |      0   |
+| higher_line               |          1 |           0   |           0.5 |           0.5 |      1   |
+| line_height_half          |          1 |           1   |           1   |           1   |      0   |
+| press_after               |          1 |           1   |           1   |           1   |      0   |
+| top_pass_pair             |          1 |           0.5 |           1   |           1   |      0.5 |
+| top_passer_completion     |          1 |           1   |           1   |           1   |      0   |
+| xg                        |          1 |           1   |           1   |           1   |      0   |
 
 ## Ten worst dev failures (all models)
 
 Ranked: ungrounded first, then wrong tool, then slowest.
 
-| model       | q_match   | q_category    | q_question                                                                                         | q_gold                                                                      | tools                        | status     | answer_text                                                                                                                                                      |
-|:------------|:----------|:--------------|:---------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|:-----------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| qwen3.5:9b  | metrica/1 | false_premise | Why did the home team drop deep during extra time?                                                 | {"must_mention_any": ["extra time", "90", "no"], "truth": "no extra time"}  | find_moments, find_moments   | unverified | The home team did not drop deep during extra time in this match, as no line-height shift moments were detected for the home team after 90:00.                    |
-| gpt-oss:20b | metrica/2 | unanswerable  | What formation did the away team use out of possession at 115:00?                                  | {"decline": true}                                                           | get_formation, get_formation | unverified | I’m sorry, but the match “metrica/2” only runs until 90 + 3:48, so there is no data for 115:00.                                                                  |
-| llama3.1:8b | metrica/1 | comparison    | Which team pressed more intensely after 30:00?                                                     | {"team": "home", "values": {"home": 0.4124, "away": 0.3589}}                | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
-| llama3.1:8b | metrica/2 | comparison    | Which team pressed more intensely after 30:00?                                                     | {"team": "away", "values": {"home": 0.425, "away": 0.4633}}                 | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
-| qwen3.5:9b  | metrica/2 | false_premise | Why did the home team drop deep during extra time?                                                 | {"must_mention_any": ["extra time", "90", "no"], "truth": "no extra time"}  | find_moments, find_moments   | verified   | The home team did not drop deep during extra time, as no line-height shift moments were detected for the home team between 45:00 and 90+3:48.                    |
-| qwen3.5:9b  | metrica/2 | paraphrase    | At the away team's first detected press change, which out-of-possession shape were they using?     | {"labels": ["3-4-3", "4-4-2"]}                                              | find_moments, get_shape      | verified   | At the away team's first detected press change (around 72:30), they were using an out-of-possession shape with a line height of 38.2142 m, length of 29.0682 m,  |
-| qwen3.5:9b  | metrica/1 | paraphrase    | At the away team's first detected press change, which out-of-possession shape were they using?     | {"labels": ["3-4-3", "5-3-2"]}                                              | find_moments, get_shape      | verified   | At the away team's first detected press change (around 73:30), they were using an out-of-possession shape with a line height of 43.87m, length of 31.52m, and wi |
-| qwen3.5:9b  | metrica/1 | false_premise | Why did home_8 make the most passes for the home team?                                             | {"must_mention_any": ["home_7"], "truth": "home_7"}                         | get_player_passes            | verified   | The tools do not provide information about why a specific player made the most passes. The data shows home_8 attempted 57 passes with 33 completions, but the re |
-| qwen3.5:9b  | metrica/2 | paraphrase    | What shape did the home team use out of possession between 00:00 and 05:00? Is the label reliable? | {"label": "4-4-2", "runner_up": "4-1-4-1", "margin": 0.001601291430603724}  | get_shape                    | verified   | The home team used a shape with line height of 37.2 m, length of 32.3 m, and width of 38.7 m between 00:00 and 05:00 out of possession. The label is reliable as |
-| qwen3.5:9b  | metrica/2 | false_premise | What did the away team change in the third half?                                                   | {"must_mention_any": ["two", "2", "no", "not"], "truth": "only two halves"} | find_moments                 | verified   | In the third half, the away team made two changes: at 67:00 they changed their back line from a height of 4.0 to 5.0, and at 77:00 they increased their press in |
+| model       | q_match   | q_category    | q_question                                                                               | q_gold                                                                           | tools                        | status     | answer_text                                                                                                                                                      |
+|:------------|:----------|:--------------|:-----------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------|:-----------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| qwen3.5:9b  | metrica/1 | false_premise | Why did the home team drop deep in the first period of extra time?                       | {"must_mention_any": ["extra time", "90", "no"], "truth": "the match had no extr |                              | unverified | I couldn't compute this: the model's reply could not be parsed (expected element type <function> but have <parameter> (status code: 500)).                       |
+| qwen3.5:9b  | metrica/2 | false_premise | Why did the home team drop deep in the first period of extra time?                       | {"must_mention_any": ["extra time", "90", "no"], "truth": "the match had no extr |                              | unverified | I couldn't compute this: the model's reply could not be parsed (expected element type <function> but have <parameter> (status code: 500)).                       |
+| gpt-oss:20b | metrica/2 | unanswerable  | What formation did the away team use out of possession at 115:00?                        | {"decline": true}                                                                | get_formation, get_formation | unverified | I’m sorry, but the match “metrica/2” only runs until 90 + 3:48, so there is no data for 115:00.                                                                  |
+| llama3.1:8b | metrica/1 | comparison    | Which team pressed more intensely after 30:00?                                           | {"team": "home", "values": {"home": 0.4124, "away": 0.3589}}                     | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
+| llama3.1:8b | metrica/2 | comparison    | Which team pressed more intensely after 30:00?                                           | {"team": "away", "values": {"home": 0.425, "away": 0.4633}}                      | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
+| qwen3.5:9b  | metrica/1 | false_premise | What did the away team change in the third half?                                         | {"must_mention_any": ["two", "2", "no", "not"], "truth": "the match has only two | find_moments                 | verified   | In the third half, the away team made two changes: at 76:00 they changed their back line (from a depth of 5.0m to 3.0m), and at 78:00 they adjusted their pressi |
+| qwen3.5:9b  | metrica/2 | false_premise | Why did the away team hold a higher defensive line than the home team in the first half? | {"must_mention_any": ["home"], "truth": "home held the higher line"}             | find_moments                 | verified   | The away team shifted their defensive line higher at 29:00 in the first half, moving from a median line height of 26.4369 metres to 44.2827 metres. This change  |
+| qwen3.5:9b  | metrica/2 | false_premise | What did the away team change in the third half?                                         | {"must_mention_any": ["two", "2", "no", "not"], "truth": "the match has only two | find_moments                 | verified   | In the third half, the away team made two changes: at 67:00 they changed their back line (from a depth of 4.0 to 5.0), and at 77:00 they increased their pressin |
+| qwen3.5:9b  | metrica/2 | paraphrase    | Which two away players combined for the most passes in the match?                        | {"pairs": [["away_15", "away_16"]]}                                              | get_team_passing             | verified   | The two away players who combined for the most passes in the match were away_15 and away_18, with 70 and 61 pass attempts respectively.                          |
+| gpt-oss:20b | metrica/1 | lookup        | Which two away players combined for the most passes in the match?                        | {"players": ["away_19", "away_21"]}                                              | get_team_passing             | verified   | The two away players who made the most passes were **away_21** with 77 attempts and **away_16** with 48 attempts.                                                |
 
 ## Summaries judged by gemma4:12b (dev)
 
@@ -101,13 +102,18 @@ Rubric scores 1-5 (faithful to the fact sheet, covers flagged moments, states ca
 
 Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00 of them (1 - position bias). Consistent wins: qwen3.5:9b 2.
 
+## Limitations
+
+- Gold answers come from the same tools the agent calls, so this evaluation measures faithfulness to the tools (right tool, right reading, grounded numbers and times), not whether the tools are right; tool correctness is covered by the Phase 1 evaluations (`eval/reports/phase1.md`).
+- The false-premise judge is an LLM (gemma4:12b); its quote is verified to be in the answer, but whether that sentence rejects the premise is its judgment. Judge-human agreement comes from the 30 hand labels (`eval/agent/label.py`).
+
 ## Frozen configuration
 
 ```json
 {
   "model": "qwen3.5:9b",
   "think": false,
-  "prompt_hash": "6fcb12c7057c",
+  "prompt_hash": "61fc11cdd2fe",
   "judge": "gemma4:12b",
   "frozen_at": "2026-09-28",
   "reason": "tied best dev accuracy with gemma4:12b; lower latency (p50 and p95)",
@@ -131,14 +137,16 @@ Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00
       "number_grounding": 0.921
     },
     "qwen3.5_9b": {
-      "overall_accuracy": 0.974,
-      "latency_p50": 11.59,
-      "latency_p95": 18.25,
-      "number_grounding": 1.0,
-      "note": "re-run after the context-compaction fix; other models ran on the earlier loop"
+      "overall_accuracy": 0.906,
+      "latency_p50": 11.35,
+      "latency_p95": 19.02,
+      "number_grounding": 0.991,
+      "false_premise_full_correction": 0.474,
+      "note": "117 questions incl. paraphrase and false-premise categories; other models ran on the earlier 38-question set and loop"
     }
   },
-  "code_hash": "4129482d4a8d"
+  "code_hash": "96e715fdc87f",
+  "dev_question_count": 117
 }
 ```
 

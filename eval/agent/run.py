@@ -105,6 +105,74 @@ def check_frozen() -> dict:
     return frozen
 
 
+MIN_FREE_GB = 5.0
+
+
+def preflight() -> None:
+    """Check everything the test run needs, without reading or running any test item.
+
+    Verifies the frozen hashes, that the agent and judge models are installed, free
+    disk, that the output paths are writable, that every test match has a store
+    (manifest only), and answers one dev question end to end. Exits non-zero on
+    any failure.
+    """
+    import shutil
+    import tempfile
+
+    import ollama
+    from premise_judge import JUDGE_MODEL
+
+    checks: list[tuple[str, bool, str]] = []
+    frozen = json.loads(FROZEN.read_text()) if FROZEN.exists() else {}
+    checks.append(("frozen.json exists", bool(frozen), str(FROZEN)))
+    for k, v in current_hashes().items():
+        checks.append((f"{k} matches frozen", frozen.get(k) == v, f"{frozen.get(k)} vs {v}"))
+    model = frozen.get("model", "")
+    installed = {m.model for m in ollama.Client().list().models}
+    for name in (model, JUDGE_MODEL):
+        checks.append((f"model {name} installed", name in installed, ""))
+    free = shutil.disk_usage(RESULTS).free / 1e9
+    checks.append(("free disk", free >= MIN_FREE_GB, f"{free:.1f} GB (need {MIN_FREE_GB})"))
+    for d in (RESULTS, REPORT.parent):
+        try:
+            with tempfile.NamedTemporaryFile(dir=d):
+                ok = True
+        except OSError:
+            ok = False
+        checks.append((f"writable {d.relative_to(HERE.parent.parent)}", ok, ""))
+    out = results_path("test", model) if model else None
+    if out and out.exists():
+        n = sum(1 for _ in out.open())
+        checks.append(("test results file", True, f"exists with {n} lines; the run resumes"))
+    toolbox = Toolbox(io.data_dir() / "store")
+    missing = sorted(set(SPLITS["test"]) - set(toolbox.matches()))  # manifests only
+    checks.append(("test match stores present", not missing, ", ".join(missing)))
+    if model and all(ok for _, ok, _ in checks):
+        q = generate(toolbox, SPLITS["dev"][0])[0].to_dict()
+        provider = OllamaProvider(model, think=frozen.get("think"))
+        try:
+            a = Agent(toolbox, provider).answer(q["question"], q["match"]).model_dump()
+            sc = score(q, a, toolbox)
+            checks.append(
+                (
+                    "one dev question end to end",
+                    True,
+                    f"{q['qid']}: {a['status']}, correct={sc['correct']}, {a['latency_s']:.1f}s",
+                )
+            )
+        except Exception as e:  # report it as a failed check, then exit non-zero
+            checks.append(("one dev question end to end", False, repr(e)))
+        finally:
+            provider.unload()
+    else:
+        checks.append(("one dev question end to end", False, "skipped: earlier checks failed"))
+    for name, ok, detail in checks:
+        print(f"{'PASS' if ok else 'FAIL'}  {name}" + (f"  ({detail})" if detail else ""))
+    if not all(ok for _, ok, _ in checks):
+        sys.exit("preflight failed")
+    print("preflight passed")
+
+
 def freeze(model: str, think) -> None:
     """Pin the model and every hash, with the dev summary of that model's results."""
     path = results_path("dev", model)
@@ -539,7 +607,11 @@ def main() -> None:
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--rescore", action="store_true", help="re-score stored dev answers")
     ap.add_argument("--freeze", action="store_true", help="pin --model and all hashes")
+    ap.add_argument("--preflight", action="store_true", help="check readiness for the test run")
     args = ap.parse_args()
+    if args.preflight:
+        preflight()
+        return
     if args.freeze:
         if not args.model:
             sys.exit("--freeze needs --model")
