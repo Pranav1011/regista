@@ -46,8 +46,22 @@ THINK_DEFAULTS = {
 }  # gpt-oss always reasons
 
 
+AGENT_CODE = [
+    HERE.parent.parent / "src" / "regista" / "agent" / f
+    for f in ("loop.py", "tools.py", "grounding.py")
+]
+
+
 def prompt_hash() -> str:
     return hashlib.sha256(SYSTEM_PROMPT.encode()).hexdigest()[:12]
+
+
+def code_hash() -> str:
+    """Hash of the agent loop, tools, and grounding check the frozen results depend on."""
+    h = hashlib.sha256()
+    for f in AGENT_CODE:
+        h.update(f.read_bytes())
+    return h.hexdigest()[:12]
 
 
 def results_path(split: str, model: str) -> Path:
@@ -296,6 +310,8 @@ def main() -> None:
             frozen = json.loads(FROZEN.read_text())
             if frozen["prompt_hash"] != prompt_hash():
                 sys.exit("the system prompt changed since it was frozen; the test split is locked")
+            if frozen.get("code_hash") != code_hash():
+                sys.exit("the agent code changed since it was frozen; the test split is locked")
             model, think = frozen["model"], frozen.get("think")
             if results_path("test", model).exists():
                 sys.exit("the test split has already been run once; refusing to run it again")

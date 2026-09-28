@@ -32,9 +32,12 @@ from regista.agent.loop import Agent, OllamaProvider  # noqa: E402
 from regista.agent.tools import Toolbox  # noqa: E402
 
 SUMMARY_QUESTION = (
-    "Write a tactical summary of this match in five to eight sentences: each team's usual "
-    "formation in and out of possession (with how clear-cut it is), pressing, defensive line "
-    "height, and every tactical moment Regista detected, with match clocks. State the caveats."
+    "Write a tactical summary of this match in five to eight sentences. Cover: each team's "
+    "usual formation with and without the ball, and whether it was clear-cut or a close call; "
+    "each team's pressing intensity; each team's defensive line height out of possession; and "
+    "every tactical moment from find_moments, each with its team and match clock. End with one "
+    "sentence of caveats: formation labels are noisy at 5-minute windows, and passes are "
+    "inferred from tracking."
 )
 CRITERIA = ("faithful", "coverage", "caveats")
 RUBRIC = """You are grading a football match summary against a fact sheet computed from data.
@@ -80,9 +83,11 @@ def fact_sheet(toolbox: Toolbox, match: str) -> dict:
     for team in ("home", "away"):
         for phase in ("in", "out"):
             f = toolbox.get_formation(match, team, phase)
+            labels = [w.label for w in f.windows if w.label]
             facts[f"formation_{team}_{phase}"] = {
                 "most_common_label": f.most_common_label,
                 "share": f.most_common_share,
+                "label_counts": {lab: labels.count(lab) for lab in sorted(set(labels))},
                 "close_call_windows": sum(bool(w.close_call) for w in f.windows),
                 "windows": len(f.windows),
             }

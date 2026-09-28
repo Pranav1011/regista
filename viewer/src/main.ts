@@ -58,7 +58,7 @@ function renderCards(cards: Record<"home" | "away", Card | null>) {
     for (const phase of ["out", "in"] as const) {
       const s = cards[team]?.[phase];
       if (!s) {
-        nodes.push(el("span", { className: "cell empty", textContent: "Needs 4 min of this half" }));
+        nodes.push(el("span", { className: "cell empty", textContent: "Not enough of this half yet" }));
         continue;
       }
       const cell = el("span", { className: "cell" },

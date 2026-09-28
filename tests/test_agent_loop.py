@@ -109,3 +109,20 @@ def test_tool_errors_reach_the_model_and_unknown_topics_are_declined(toolbox):
     assert "outside the recorded match" in tool_messages[0]["content"]
     assert a.tools_used[0]["error"] and a.status == "verified"
     assert any("xG" in c for c in a.caveats)
+
+
+def test_truncated_answers_are_never_verified(toolbox):
+    label = toolbox.get_formation(MATCH, "home", "out").most_common_label
+    cut = ProviderReply(f"Home defended in a {label} and", [], 0.0, truncated=True)
+    provider = Scripted([_call("get_formation", match=MATCH, team="home", phase="out"), cut])
+    a = Agent(toolbox, provider).answer("What was home's shape without the ball?", MATCH)
+    assert a.status == "unverified" and any("cut off" in c for c in a.caveats)
+
+
+def test_model_sees_results_without_evidence_but_citations_keep_it(toolbox):
+    provider = Scripted(
+        [_call("get_formation", match=MATCH, team="home", phase="out"), _say("Done.")]
+    )
+    a = Agent(toolbox, provider).answer("Shape?", MATCH)
+    tool_message = next(m for m in provider.sent[-1][0] if m["role"] == "tool")
+    assert '"evidence"' not in tool_message["content"] and a.citations

@@ -54,6 +54,7 @@ class ProviderReply:
     content: str
     tool_calls: list[tuple[str, dict]]
     duration_s: float
+    truncated: bool = False  # generation stopped at the length/context limit
 
 
 class Provider(Protocol):
@@ -97,7 +98,12 @@ class OllamaProvider:
             (c.function.name, dict(c.function.arguments or {}))
             for c in (r.message.tool_calls or [])
         ]
-        return ProviderReply(r.message.content or "", calls, time.perf_counter() - start)
+        return ProviderReply(
+            r.message.content or "",
+            calls,
+            time.perf_counter() - start,
+            truncated=r.done_reason == "length",
+        )
 
     def unload(self) -> None:
         """Free the model's memory (used between agent and judge runs)."""
@@ -157,6 +163,22 @@ class _Trace:
     caveats: list[str] = field(default_factory=list)
 
 
+def _for_model(result: Any, seen_notes: list[str]) -> Any:
+    """What the model sees of a tool result: evidence and already-seen notes are dropped.
+
+    Evidence is collected into the citations separately, and repeated notes waste
+    context; the numbers the model may cite are all kept.
+    """
+    if not isinstance(result, dict):
+        return result
+    out = {k: v for k, v in result.items() if k != "evidence"}
+    if "notes" in out:
+        out["notes"] = [n for n in out["notes"] if n not in seen_notes]
+    if "moments" in out:
+        out["moments"] = [{k: v for k, v in m.items() if k != "evidence"} for m in out["moments"]]
+    return out
+
+
 class Agent:
     def __init__(self, toolbox: Toolbox, provider: Provider, max_rounds: int = 6):
         self.toolbox = toolbox
@@ -165,6 +187,7 @@ class Agent:
         self.schemas, self.registry = tool_schemas(toolbox)
 
     def _run_tool(self, name: str, args: dict, trace: _Trace) -> str:
+        seen_notes = list(trace.caveats)
         if name not in self.registry:
             result: Any = {"error": f"unknown tool {name!r}; tools: {list(self.registry)}"}
         else:
@@ -196,7 +219,7 @@ class Agent:
                     trace.caveats.append(note)
             if result.get("available") is False and result.get("reason") not in trace.caveats:
                 trace.caveats.append(result["reason"])
-        return json.dumps(result, default=str)
+        return json.dumps(_for_model(result, seen_notes), default=str)
 
     def answer(self, question: str, match: str) -> AgentAnswer:
         start = time.perf_counter()
@@ -206,10 +229,11 @@ class Agent:
             {"role": "user", "content": f"Match: {match}\nQuestion: {question}"},
         ]
         content = ""
+        truncated = False
         for _ in range(self.max_rounds):
             reply = self.provider.chat(messages, tools=self.schemas)
             if not reply.tool_calls:
-                content = reply.content
+                content, truncated = reply.content, reply.truncated
                 break
             messages.append(
                 {
@@ -229,7 +253,8 @@ class Agent:
                     }
                 )
         else:
-            content = self.provider.chat(messages, tools=None).content
+            reply = self.provider.chat(messages, tools=None)
+            content, truncated = reply.content, reply.truncated
 
         sources = [*trace.outputs, question, match]
         check = check_numbers(content, sources)
@@ -243,8 +268,11 @@ class Agent:
                     "content": RETRY_PROMPT.format(numbers=", ".join(check.ungrounded)),
                 },
             ]
-            content = self.provider.chat(messages, tools=None).content
+            reply = self.provider.chat(messages, tools=None)
+            content, truncated = reply.content, reply.truncated
             check = check_numbers(content, sources)
+        if truncated:
+            trace.caveats.append("The answer was cut off at the model's length limit.")
         return AgentAnswer(
             question=question,
             match=match,
@@ -252,7 +280,7 @@ class Agent:
             citations=trace.citations,
             tools_used=trace.tools_used,
             caveats=trace.caveats,
-            status="verified" if check.grounded else "unverified",
+            status="verified" if check.grounded and not truncated else "unverified",
             ungrounded_numbers=check.ungrounded,
             retried=retried,
             model=self.provider.name,

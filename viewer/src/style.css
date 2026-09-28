@@ -84,7 +84,14 @@ select {
   gap: var(--space-5); padding: var(--space-4) var(--space-5) var(--space-5);
   align-items: start;
 }
-@media (max-width: 62rem) { .layout { grid-template-columns: 1fr; } }
+.layout > * { min-width: 0; }
+@media (max-width: 62rem) { .layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 40rem) {
+  .masthead, .layout, .credits { padding-inline: var(--space-3); }
+  .hint { display: none; }
+  .tagline { display: none; }
+  .cards { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); }
+}
 
 .stage { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .pitch-frame { position: relative; }
