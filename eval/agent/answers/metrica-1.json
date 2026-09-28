@@ -1,0 +1,411 @@
+{
+ "model": "qwen3.5:9b",
+ "generated": "2026-09-28",
+ "items": [
+  {
+   "question": "What formation did each team use without the ball, and how clear-cut was it?",
+   "answer_text": "The home team most commonly used a 4-4-2 formation without the ball (65% share), while the away team most commonly used a 3-5-2 formation (60% share). For the home team, many windows were close calls with margins around 0.02\u20130.04, but later in the match it became clearer. The away team had several clear-cut moments, such as at 65:00 where the margin was 0.073, and at 85:00 where it was 0.097.",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 1,
+     "frame_end": 7500,
+     "clock_start": "00:00",
+     "clock_end": "05:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 7500,
+     "frame_end": 15000,
+     "clock_start": "05:00",
+     "clock_end": "10:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 15000,
+     "frame_end": 22500,
+     "clock_start": "10:00",
+     "clock_end": "15:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 22500,
+     "frame_end": 30000,
+     "clock_start": "15:00",
+     "clock_end": "20:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 30000,
+     "frame_end": 37500,
+     "clock_start": "20:00",
+     "clock_end": "25:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 37500,
+     "frame_end": 45000,
+     "clock_start": "25:00",
+     "clock_end": "30:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 45000,
+     "frame_end": 52500,
+     "clock_start": "30:00",
+     "clock_end": "35:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 52500,
+     "frame_end": 60000,
+     "clock_start": "35:00",
+     "clock_end": "40:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 60000,
+     "frame_end": 67500,
+     "clock_start": "40:00",
+     "clock_end": "45+0:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 67500,
+     "frame_end": 71268,
+     "clock_start": "45+0:00",
+     "clock_end": "45+2:30"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 71269,
+     "frame_end": 78768,
+     "clock_start": "45:00",
+     "clock_end": "50:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 78768,
+     "frame_end": 86268,
+     "clock_start": "50:00",
+     "clock_end": "55:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 86268,
+     "frame_end": 93768,
+     "clock_start": "55:00",
+     "clock_end": "60:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 93768,
+     "frame_end": 101268,
+     "clock_start": "60:00",
+     "clock_end": "65:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 101268,
+     "frame_end": 108768,
+     "clock_start": "65:00",
+     "clock_end": "70:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 108768,
+     "frame_end": 116268,
+     "clock_start": "70:00",
+     "clock_end": "75:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 116268,
+     "frame_end": 123768,
+     "clock_start": "75:00",
+     "clock_end": "80:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 123768,
+     "frame_end": 131268,
+     "clock_start": "80:00",
+     "clock_end": "85:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 131268,
+     "frame_end": 138768,
+     "clock_start": "85:00",
+     "clock_end": "90:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 138768,
+     "frame_end": 145006,
+     "clock_start": "90:00",
+     "clock_end": "90+4:09"
+    }
+   ],
+   "caveats": [
+    "Exact template labels are noisy at 5-minute windows; position groups and the back-line count are more reliable. margin and relative_margin measure how much better the winning template fits than the runner-up; they are not probabilities."
+   ]
+  },
+  {
+   "question": "Which team pressed more intensely in the second half?",
+   "answer_text": "The home team pressed more intensely in the second half with a press intensity of 0.406 compared to the away team's 0.3268, a difference of 0.0792.",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 71269,
+     "frame_end": 145006,
+     "clock_start": "45:00",
+     "clock_end": "90+4:09"
+    }
+   ],
+   "caveats": [
+    "Pressure = defender within 5 yd (4.572 m) of the carrier, fixed radius; tight = within 2 m. Thirds are from the pressing team's view (attacking = high press)."
+   ]
+  },
+  {
+   "question": "When did either team change its back line, according to the detectors?",
+   "answer_text": "The back line change moments were detected at the following match clocks: 13:00, 28:00, 45+1:00, and 76:00 (all by the away team).",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 1,
+     "frame_end": 71268,
+     "clock_start": "00:00",
+     "clock_end": "45+2:30"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 71269,
+     "frame_end": 145006,
+     "clock_start": "45:00",
+     "clock_end": "90+4:09"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 9000,
+     "frame_end": 19500,
+     "clock_start": "06:00",
+     "clock_end": "13:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 31500,
+     "frame_end": 42000,
+     "clock_start": "21:00",
+     "clock_end": "28:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 58500,
+     "frame_end": 69000,
+     "clock_start": "39:00",
+     "clock_end": "45+1:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 107268,
+     "frame_end": 117768,
+     "clock_start": "69:00",
+     "clock_end": "76:00"
+    }
+   ],
+   "caveats": [
+    "Moments come from causal detectors: each used only data up to its emit time. The start time is an estimate."
+   ]
+  },
+  {
+   "question": "How high was each team's defensive line out of possession in the first half?",
+   "answer_text": "In the first half out of possession, the home team's defensive line was at 34.25 metres and the away team's was at 34.28 metres; the away team's line was slightly higher by 0.03 metres.",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 1,
+     "frame_end": 71268,
+     "clock_start": "00:00",
+     "clock_end": "45+2:30"
+    }
+   ],
+   "caveats": [
+    "Line height is the deepest outfield player's distance from their own goal line."
+   ]
+  },
+  {
+   "question": "Which home player made the most passes, and how many did they complete?",
+   "answer_text": "The home player who made the most passes was home_7 with 66 attempts and 51 completions.",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 1,
+     "frame_end": 71268,
+     "clock_start": "00:00",
+     "clock_end": "45+2:30"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 71269,
+     "frame_end": 145006,
+     "clock_start": "45:00",
+     "clock_end": "90+4:09"
+    }
+   ],
+   "caveats": [
+    "Passes are inferred from tracking (detector v2).",
+    "Players are anonymised ids; names are not available."
+   ]
+  },
+  {
+   "question": "Which away player made the most passes, and how many did they complete?",
+   "answer_text": "The away player who made the most passes was away_21 with 81 attempts, completing 65 of them.",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 1,
+     "frame_end": 71268,
+     "clock_start": "00:00",
+     "clock_end": "45+2:30"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 71269,
+     "frame_end": 145006,
+     "clock_start": "45:00",
+     "clock_end": "90+4:09"
+    }
+   ],
+   "caveats": [
+    "Passes are inferred from tracking (detector v2).",
+    "Players are anonymised ids; names are not available."
+   ]
+  },
+  {
+   "question": "What tactical moments did Regista detect after 60:00?",
+   "answer_text": "After 60:00, Regista detected two tactical moments for the away team in the second half: a back_line_change at 76:00 (line height dropped from 5.0 to 3.0) and a press_change at 78:00 (press intensity fell from 0.6396 to 0.2755).",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 93768,
+     "frame_end": 145006,
+     "clock_start": "60:00",
+     "clock_end": "90+4:09"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 107268,
+     "frame_end": 117768,
+     "clock_start": "69:00",
+     "clock_end": "76:00"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 110268,
+     "frame_end": 120768,
+     "clock_start": "71:00",
+     "clock_end": "78:00"
+    }
+   ],
+   "caveats": [
+    "Moments come from causal detectors: each used only data up to its emit time. The start time is an estimate."
+   ]
+  },
+  {
+   "question": "In which third did the away team press most?",
+   "answer_text": "The away team pressed most in the defensive third (press_intensity: 0.5278), followed by the middle third (0.4925) and attacking third (0.134).",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 1,
+     "frame_start": 1,
+     "frame_end": 71268,
+     "clock_start": "00:00",
+     "clock_end": "45+2:30"
+    },
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 71269,
+     "frame_end": 145006,
+     "clock_start": "45:00",
+     "clock_end": "90+4:09"
+    }
+   ],
+   "caveats": [
+    "Pressure = defender within 5 yd (4.572 m) of the carrier, fixed radius; tight = within 2 m. Thirds are from the pressing team's view (attacking = high press)."
+   ]
+  },
+  {
+   "question": "What was the home team's formation in possession between 60:00 and 65:00?",
+   "answer_text": "The home team's formation in possession between 60:00 and 65:00 was a 4-2-3-1, which was the most common label with a share of 1.0 (100%). The margin for this formation was 0.0724 compared to the runner-up 4-1-4-1, and it was not considered a close call.",
+   "status": "verified",
+   "citations": [
+    {
+     "match": "metrica/1",
+     "period": 2,
+     "frame_start": 93768,
+     "frame_end": 101268,
+     "clock_start": "60:00",
+     "clock_end": "65:00"
+    }
+   ],
+   "caveats": [
+    "Exact template labels are noisy at 5-minute windows; position groups and the back-line count are more reliable. margin and relative_margin measure how much better the winning template fits than the runner-up; they are not probabilities."
+   ]
+  },
+  {
+   "question": "What was the expected goals (xG) for each team?",
+   "answer_text": "Expected goals (xG) is not modelled by Regista. I can provide information about formations, team shape, pressing intensity, pass counts, and tactical moments instead.",
+   "status": "verified",
+   "citations": [],
+   "caveats": [
+    "Expected goals (xG) is not modelled by Regista."
+   ]
+  }
+ ]
+}
