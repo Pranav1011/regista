@@ -519,7 +519,8 @@ class Toolbox:
         from_clock: str | None = None,
         to_clock: str | None = None,
     ) -> ShapeResult:
-        """Team dimensions in metres (median of 5-minute medians): line height, length, width.
+        """Team dimensions in metres (median of 5-minute medians): line height (distance of
+        the deepest outfield player from the team's own goal line), length, width.
 
         Not the formation; for the shape or system (e.g. 4-4-2) use get_formation.
         """

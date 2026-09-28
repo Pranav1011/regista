@@ -63,3 +63,11 @@ def test_question_and_error_clocks_are_exempt():
         check_clocks("The match ends at 90+4:09.", EVIDENCE, ["period 2 runs 45:00 to 90+4:09"])
         == []
     )
+
+
+def test_fraction_and_percentage_are_the_same_number():
+    tool = {"completion_share": 0.873}  # synthetic tool output
+    for text in ("completed 87.3%", "completed 87.3 percent", "completed 87%", "a share of 0.873"):
+        assert check_numbers(text, [tool]).grounded, text
+    assert not check_numbers("completed 88.3%", [tool]).grounded
+    assert not check_numbers("completed 87.3 of them", [tool]).grounded  # no % sign: not scaled

@@ -27,6 +27,7 @@ sys.path.insert(0, str(HERE))
 
 from _common import SKILLCORNER_MATCHES, TEST_GAME, TRAIN_GAMES  # noqa: E402
 from premise_judge import load as load_premise_judgments  # noqa: E402
+from premise_judge import verdict as premise_verdict  # noqa: E402
 from questions import generate  # noqa: E402
 from scoring import score  # noqa: E402
 
@@ -225,7 +226,8 @@ def load(path: Path) -> pd.DataFrame:
             v = judged.get(r["question"]["qid"])
             s["premise_scorer"] = "judge" if v else "pattern"
             if v:
-                s["premise_rejected_judge"] = v["rejects_premise"] and v["with_evidence"]
+                s["premise_rejected_judge"] = premise_verdict(v)
+                s["premise_quote_valid"] = v["quote_valid"] if v["rejects_premise"] else None
                 s["correct"] = s["premise_rejected_judge"] and r["answer"]["status"] == "verified"
         rows.append(
             {
@@ -288,7 +290,12 @@ def premise_agreement(df: pd.DataFrame) -> dict | None:
         pe = a.mean() * b.mean() + (1 - a.mean()) * (1 - b.mean())
         return float("nan") if pe == 1 else (po - pe) / (1 - pe)
 
-    out = {"items": len(fp)}
+    claimed = fp["premise_quote_valid"].dropna()
+    out = {
+        "items": len(fp),
+        "quotes_claimed": len(claimed),
+        "quotes_invalid": int((~claimed.astype(bool)).sum()),
+    }
     for name, j, p in (
         ("rejection", fp["premise_rejected_judge"], fp["premise_rejected_pattern"]),
         ("correct", fp["correct"], fp["correct_pattern"]),
@@ -411,7 +418,9 @@ def write_report() -> Path:
             lines += [
                 "### False premise: LLM judge (primary) vs pattern rule (secondary)",
                 "",
-                f"{agree['items']} items. Premise rejected: judge "
+                f"{agree['items']} items. The judge claimed a rejection in "
+                f"{agree['quotes_claimed']}; {agree['quotes_invalid']} of its quotes were not "
+                "found in the answer and count as not rejected. Premise rejected: judge "
                 f"{agree['rejection_judge_rate']:.2f}, "
                 f"pattern {agree['rejection_pattern_rate']:.2f}; "
                 f"agreement {agree['rejection_agreement']:.2f}, Cohen's kappa "

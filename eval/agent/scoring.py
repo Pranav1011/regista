@@ -72,22 +72,22 @@ def score(q: dict, answer: dict, toolbox: Toolbox) -> dict:
             abs(v - g["value"]) <= g["tolerance"] for v in _numbers(text)
         )
     elif tmpl == "top_pass_pair":
-        correct = all(p in text for p in g["players"])
+        correct = any(all(p in text for p in pair) for pair in g["pairs"])
     elif tmpl in ("press_after", "higher_line"):
         other = "away" if g["team"] == "home" else "home"
         low = text.lower()
         correct = g["team"] in low and (other not in low or low.index(g["team"]) < low.index(other))
     elif tmpl.startswith("first_"):
-        want = _clock_seconds(g["clock"]) if "+" not in g["clock"] else None
         clocks = re.findall(r"\d{1,3}\+\d+(?::\d{2})?|\d{1,3}:\d{2}", text)
         correct = any(
-            (c == g["clock"])
+            (c == gold)
             or (
-                want is not None
+                "+" not in gold
                 and "+" not in c
-                and abs(_clock_seconds(c) - want) <= 60 * g["tolerance_min"]
+                and abs(_clock_seconds(c) - _clock_seconds(gold)) <= 60 * g["tolerance_min"]
             )
             for c in clocks
+            for gold in g["clocks"]
         )
     elif tmpl == "top_passer_completion":
         pct = [v for v in _numbers(text) if 0 <= v <= 100]

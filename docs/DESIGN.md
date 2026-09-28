@@ -261,8 +261,9 @@ never loaded at the same time. Prompt, model, and judge are frozen in
 `eval/agent/frozen.json`; the test split runs once against that file.
 
 **Re-freeze (2026-09-28).** Before the test run the dev set grew to 117 questions
-with two new categories: paraphrase (three rewordings of 11 templates, same gold
-answers) and false premise (10 templates asserting something the data
+with two new categories: paraphrase (three rewordings per template, same gold
+answers; written for 11 templates, but `higher_line` was not generated on either
+dev match, so that run had 60 paraphrase questions: 10 templates, 3 wordings, 2 matches) and false premise (10 templates asserting something the data
 contradicts). The loop gained guards against echoed tool errors and unparseable
 model output, and the prompt gained rules against unsupported qualitative labels
 and for checking a question's premise first. Re-run on the final code, qwen3.5:9b
@@ -287,8 +288,30 @@ disclosed here; the test split was not looked at.
   moment found" is citable.
 - *False-premise scoring.* The primary scorer is now an LLM judge (gemma4:12b,
   `eval/agent/premise_judge.py`): does the answer reject the premise, explicitly
-  or implicitly, with evidence? The pattern rule is kept as a secondary scorer,
-  and the report gives the agreement and Cohen's kappa between the two.
+  or implicitly, with evidence? The judge must quote the answer sentence that
+  rejects the premise, and the quote is checked deterministically to be a
+  substring of the answer after normalisation; without a valid quote the premise
+  counts as not rejected. The quote proves the judge read the answer, not that it
+  read it correctly: on the archived dev run it quoted a real sentence for an
+  answer that accepted the premise. The pattern rule is kept as a secondary
+  scorer, and the report gives the agreement and Cohen's kappa between the two.
+  The rubric was clarified once on dev (a statement that the tools searched a
+  range and found nothing counts as evidence) and the `truth` lines shown to the
+  judge were rewritten as sentences.
+- *Gold ambiguity found in question review.* "When did the team first change its
+  back line / pressing" can mean when the change started (the detector's estimate)
+  or when it was flagged (the emit time); both clocks are now accepted, and for
+  the formation at the first press change, a window containing either instant (or
+  the one before it). The top-passing-pair rewordings "from one player to
+  another" and "who passed to whom" asked for a directed pair; they were replaced
+  with undirected wordings, and the gold accepts the top directed or the top
+  undirected pair. All three top-passer wordings now ask about pass attempts
+  (one had said "busiest passer"), so only the player with the most attempts is
+  accepted. `higher_line` now falls back to the other half when the drawn half's
+  gap is under 1 m, so all 11 paraphrased templates are generated. The third
+  `close_call_formation` rewording deliberately omits "how certain"; it is still
+  scored on the close-call caveat. The `get_team_dimensions` description now
+  defines line height as the distance from the team's own goal line.
 - *Frozen hashes.* `frozen.json` also pins hashes of the question bank
   (`questions.py`) and the scorers (`scoring.py`, `premise_judge.py`); the test
   split refuses to start if any pinned hash differs.

@@ -3,7 +3,10 @@
 For every false-premise item in a results file, gemma4:12b (a different family
 from the agent) reads the question, what the data shows, the answer, and the
 evidence ranges the answer cites, and decides whether the answer rejects the
-premise, explicitly or implicitly, with evidence. Run after the agent has
+premise, explicitly or implicitly, with evidence. The judge must quote the answer
+sentence that rejects the premise; the quote is checked deterministically to be a
+substring of the answer (after normalisation), and without a valid quote the
+premise counts as not rejected. Run after the agent has
 finished and been unloaded; the judge is never loaded alongside it.
 
   uv run python eval/agent/premise_judge.py --results eval/agent/results/dev_qwen3.5_9b.jsonl
@@ -13,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -20,6 +24,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
+from regista.agent.grounding import normalise  # noqa: E402
 from regista.agent.loop import OllamaProvider  # noqa: E402
 
 JUDGE_MODEL = "gemma4:12b"
@@ -34,17 +39,31 @@ You are told what the data actually shows. Decide:
   the match or a stated time range and found no such moment), rather than a bare
   denial? Judge only the answer; do not reward facts that appear only in WHAT THE DATA
   SHOWS.
+- quote: if rejects_premise is true, copy the answer sentence that rejects the premise,
+  word for word; otherwise an empty string.
 Answer only with JSON: {"rejects_premise": true|false, "with_evidence": true|false,
-"reason": "..."}"""
+"quote": "...", "reason": "..."}"""
 SCHEMA = {
     "type": "object",
     "properties": {
         "rejects_premise": {"type": "boolean"},
         "with_evidence": {"type": "boolean"},
+        "quote": {"type": "string"},
         "reason": {"type": "string"},
     },
-    "required": ["rejects_premise", "with_evidence", "reason"],
+    "required": ["rejects_premise", "with_evidence", "quote", "reason"],
 }
+
+
+def _norm(text: str) -> str:
+    text = re.sub(r"\s+", " ", normalise(text)).strip().casefold()
+    return text.strip(" \"'.,;:")
+
+
+def quote_valid(quote: str, answer: str) -> bool:
+    """The quote is a non-trivial substring of the answer, after normalisation."""
+    q = _norm(quote)
+    return len(q) >= 10 and q in _norm(answer)
 
 
 def judgments_path(results: Path) -> Path:
@@ -85,12 +104,21 @@ def judge(results: Path, judge_model: str = JUDGE_MODEL) -> Path:
                     ],
                 )
                 v = json.loads(reply.message.content)
+                v["quote_valid"] = quote_valid(v["quote"], a["answer_text"])
                 fh.write(json.dumps({"qid": q["qid"], "judge": judge_model, **v}) + "\n")
                 fh.flush()
-                print(f"{q['qid']}: rejects={v['rejects_premise']} evidence={v['with_evidence']}")
+                print(
+                    f"{q['qid']}: rejects={v['rejects_premise']} evidence={v['with_evidence']} "
+                    f"quote_valid={v['quote_valid']}"
+                )
     finally:
         provider.unload()
     return out
+
+
+def verdict(v: dict) -> bool:
+    """Primary false-premise verdict: rejected, with evidence, and a verified quote."""
+    return bool(v["rejects_premise"] and v["quote_valid"] and v["with_evidence"])
 
 
 def load(results: Path) -> dict[str, dict]:

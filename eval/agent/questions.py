@@ -108,16 +108,24 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
         )
     # ---- lookup: top passing pair
     team = rng.choice(TEAMS)
-    net = toolbox.get_pass_network(match, team, top_k=1)
-    top = net.top_edges[0]
+    top = toolbox.get_pass_network(match, team, top_k=1).top_edges[0]
+    directed = [top.from_player, top.to_player]
+    passes = store.table("passes")
+    passes = passes[(passes["kind"] == "pass") & (passes["team"] == team)]
+    both = passes.groupby(
+        passes.apply(lambda r: tuple(sorted((r["from_player"], r["to_player"]))), axis=1)
+    ).size()
+    undirected = list(both.sort_index().idxmax())
+    # the wordings read as directed (A to B) or undirected (both directions); accept either pair
+    pairs = [directed] + ([undirected] if set(undirected) != set(directed) else [])
     add(
         "lookup",
         "top_pass_pair",
         f"Which pair of {team} players passed to each other most often?",
-        {"players": [top.from_player, top.to_player]},
+        {"pairs": pairs},
         [["get_pass_network"]],
         None,
-        "answer names both players of the top directed pair",
+        "answer names both players of the top directed or the top undirected pair",
         v={"team": team},
     )
 
@@ -140,9 +148,12 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             v={"clock": clock},
         )
     # ---- comparison: higher line in a half
-    half, (a, b) = rng.choice([(1, ("00:00", "45:00")), (2, ("45:00", None))])
-    vals = {t: toolbox.get_team_dimensions(match, t, "out", a, b).line_height_m for t in TEAMS}
-    if None not in vals.values() and abs(vals["home"] - vals["away"]) >= 1.0:
+    halves = [(1, ("00:00", "45:00")), (2, ("45:00", None))]
+    pick = rng.choice(halves)
+    for half, (a, b) in [pick] + [h for h in halves if h != pick]:
+        vals = {t: toolbox.get_team_dimensions(match, t, "out", a, b).line_height_m for t in TEAMS}
+        if None in vals.values() or abs(vals["home"] - vals["away"]) < 1.0:
+            continue
         add(
             "comparison",
             "higher_line",
@@ -154,6 +165,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             "answer names the team with the higher line",
             v={"half": "first" if half == 1 else "second"},
         )
+        break
 
     # ---- temporal: first detected moment of a type
     moments = toolbox.find_moments(match).moments
@@ -169,34 +181,33 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
                 "temporal",
                 f"first_{kind}",
                 f"When did the {team} team first {text}, according to Regista's detectors?",
-                {"clock": first.emit_clock, "tolerance_min": 1.0},
+                # "when did it change" can mean when it started (estimated) or when the
+                # detector flagged it (emit); both are accepted
+                {
+                    "clocks": [first.emit_clock, first.start_clock_estimate],
+                    "tolerance_min": 1.0,
+                },
                 [["find_moments"]],
                 {"period": first.period, "t_from": 0.0, "t_to": 1e9},
-                "answer gives the emit clock within one minute",
+                "answer gives the emit or the estimated start clock within one minute",
                 v={"team": team},
             )
             break
 
     # ---- multi-step: most frequent passer and completion
     team = rng.choice(TEAMS)
-    net = toolbox.get_pass_network(match, team, top_k=50)
-    passer = max(net.nodes, key=lambda n: n.passes_made).player_id  # most completed passes
-    pp = toolbox.get_player_passes(match, passer)
     top_attempts = toolbox.get_team_passing(match, team).players[0]  # most attempts
-    # "made the most passes" can mean completed passes or attempts; both readings are accepted
-    accepted = [
-        {"player": passer, "completion": pp.completed / pp.attempted},
-        {"player": top_attempts.player_id, "completion": top_attempts.completion_share},
-    ]
+    passer = top_attempts.player_id
+    accepted = [{"player": passer, "completion": top_attempts.completion_share}]
     add(
         "multi_step",
         "top_passer_completion",
-        f"Which {team} player made the most passes, and what share of their pass attempts "
+        f"Which {team} player attempted the most passes, and what share of those attempts "
         f"were completed?",
         {"accepted": accepted, "tolerance_pct": 2.0},
         [["get_team_passing"], ["get_pass_network", "get_player_passes"]],
         None,
-        "names the player and a completion share within 2 percentage points",
+        "names the player with the most attempts and a completion share within 2 points",
         v={"team": team},
     )
     # ---- multi-step: formation at the first press change
@@ -208,15 +219,20 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             & (formations["phase"] == "out")
             & (formations["period"] == first.period)
         ]
-        emit_t = next(
+        row = next(
             m
             for m in store.table("moments").itertuples()
             if m.type == "press_change" and m.team == first.team
         )
         f = f.sort_values("t_start").reset_index(drop=True)
-        containing = f.index[(f["t_start"] <= emit_t.emit_t) & (f["t_end"] > emit_t.emit_t - 1e-6)]
-        # "at that moment" is read as the window containing it or the one just before it
-        chosen = [i for k in containing for i in (k - 1, k) if 0 <= i < len(f)]
+        # "when the pressing changed" is the estimated start or the emit time; "at that
+        # moment" is the window containing either instant or the one just before it
+        containing = [
+            k
+            for inst in (row.start_t, row.emit_t)
+            for k in f.index[(f["t_start"] <= inst) & (f["t_end"] > inst - 1e-6)]
+        ]
+        chosen = sorted({i for k in containing for i in (k - 1, k) if 0 <= i < len(f)})
         f = f.loc[chosen]
         if len(f) and t is not None:
             add(
@@ -231,7 +247,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
                     "t_from": float(f["t_start"].min()),
                     "t_to": float(f["t_end"].max()),
                 },
-                "answer names the label of the window containing that moment or the one before",
+                "names the label of a window containing the start or emit time, or the one before",
                 v={"team": first.team},
             )
 
@@ -296,8 +312,9 @@ PARAPHRASES: dict[str, tuple[str, str, str]] = {
     ),
     "top_pass_pair": (
         "Which two {team} players combined for the most passes in the match?",
-        "Which {team} passing connection, from one player to another, was used most often?",
-        "In the {team} team, who passed to whom most often?",
+        "Which two {team} players exchanged the most passes with each other, counting both "
+        "directions?",
+        "In the {team} team, which pair of players linked up with passes most often?",
     ),
     "press_after": (
         "After {clock}, which side's press was more intense?",
@@ -321,9 +338,9 @@ PARAPHRASES: dict[str, tuple[str, str, str]] = {
         "What match clock does Regista give for the {team} team's first press change?",
     ),
     "top_passer_completion": (
-        "Who was the {team} team's busiest passer, and what was their pass completion rate?",
+        "Which {team} player attempted the most passes, and what was their pass completion rate?",
         "Which {team} player attempted the most passes, and what percentage did they complete?",
-        "Name the {team} player with the most passes and their completion share.",
+        "Name the {team} player with the most pass attempts and their completion share.",
     ),
     "formation_at_press_change": (
         "What formation was the {team} team in out of possession when its pressing first changed?",
