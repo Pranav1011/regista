@@ -20,8 +20,20 @@ Re-check terms before reuse elsewhere.
 | [ollama/ollama-python](https://github.com/ollama/ollama-python) | MIT | verified 2026-09-27 | Phase 2 local model client |
 | [fastapi/fastapi](https://github.com/fastapi/fastapi) | MIT | verified 2026-09-27 | Phase 2 local viewer server (`regista serve`) |
 | [encode/uvicorn](https://github.com/encode/uvicorn) | BSD-3-Clause | verified 2026-09-27 | Phase 2 local viewer server |
+| [vitejs/vite](https://github.com/vitejs/vite) | MIT | verified 2026-09-27 | Phase 2 viewer build tool |
+| [microsoft/TypeScript](https://github.com/microsoft/TypeScript) | Apache-2.0 | verified 2026-09-27 | Phase 2 viewer language |
+| [Instrument Sans / Instrument Serif](https://fontsource.org/fonts/instrument-sans) via @fontsource | OFL-1.1 | verified 2026-09-27 | Phase 2 viewer typefaces, self-hosted in the build |
 | [mplsoccer](https://github.com/andrewRowlinson/mplsoccer) | MIT | verified 2026-09-27 | Pitch plots |
 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 | verified 2026-09-27 | Phase 3 detector candidate. This is why the repo itself is AGPL-3.0 |
+
+## Models (run locally via Ollama, never redistributed)
+
+| Model | License (as shipped with the model) | Status | Use in Regista |
+|---|---|---|---|
+| llama3.1:8b | Llama 3.1 Community License | verified 2026-09-28 | Phase 2 agent candidate (baseline) |
+| qwen3.5:9b | Apache-2.0 | verified 2026-09-28 | Phase 2 agent candidate |
+| gemma4:12b | Apache-2.0 | verified 2026-09-28 | Phase 2 agent candidate |
+| gpt-oss:20b | Apache-2.0 | verified 2026-09-28 | Phase 2 agent candidate |
 
 ## Data
 

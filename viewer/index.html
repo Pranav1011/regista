@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Regista · match viewer</title>
+    <meta name="description" content="Replay football tracking data with formations, detected tactical moments, and evidence-backed answers." />
+  </head>
+  <body>
+    <a class="skip" href="#pitch-region">Skip to the replay</a>
+    <header class="masthead">
+      <div class="brand">
+        <span class="wordmark">Regista</span>
+        <span class="tagline">tactical analysis from tracking data</span>
+      </div>
+      <label class="match-picker">
+        <span class="label">Match</span>
+        <select id="match-select" aria-describedby="match-split"></select>
+        <span id="match-split" class="split-tag"></span>
+      </label>
+    </header>
+
+    <main class="layout">
+      <section id="pitch-region" class="stage" aria-label="Replay">
+        <div class="pitch-frame">
+          <canvas id="pitch" role="img" aria-label="Pitch replay"></canvas>
+          <p id="loading" class="loading" role="status">Loading match…</p>
+        </div>
+
+        <div class="transport" role="group" aria-label="Playback">
+          <button id="play" class="btn-primary" type="button" aria-label="Play">Play</button>
+          <output id="clock" class="clock" aria-live="off">00:00</output>
+          <span id="period-label" class="period-label"></span>
+          <div class="scrub-wrap">
+            <input id="scrub" type="range" min="0" max="1" step="1" value="0" aria-label="Match time" />
+            <div id="timeline" class="timeline" aria-label="Detected moments"></div>
+          </div>
+          <label class="speed">
+            <span class="label">Speed</span>
+            <select id="speed">
+              <option value="1">1×</option>
+              <option value="2">2×</option>
+              <option value="4" selected>4×</option>
+              <option value="8">8×</option>
+              <option value="16">16×</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="overlay-toggles" role="group" aria-label="Overlays">
+          <label><input id="toggle-lines" type="checkbox" checked /> Back lines</label>
+          <label><input id="toggle-options" type="checkbox" checked /> Passing options</label>
+          <span class="legend" aria-hidden="true">
+            <span class="key key-home"></span> Home (filled)
+            <span class="key key-away"></span> Away (ringed)
+          </span>
+          <span class="hint">Space play · ←/→ 5 s · Shift+←/→ 30 s</span>
+        </div>
+      </section>
+
+      <aside class="side">
+        <section class="block" aria-labelledby="cards-title">
+          <h2 id="cards-title">Shape now</h2>
+          <p class="block-note">Trailing five minutes, only data up to the replay time.</p>
+          <div id="cards" class="cards"></div>
+        </section>
+
+        <section class="block" aria-labelledby="alerts-title">
+          <div class="block-head">
+            <h2 id="alerts-title">Detected moments</h2>
+            <label class="show-all"><input id="show-all" type="checkbox" /> Show all</label>
+          </div>
+          <ol id="alerts" class="alerts"></ol>
+        </section>
+
+        <section class="block" aria-labelledby="ask-title">
+          <h2 id="ask-title">Ask the analyst</h2>
+          <p id="ask-provenance" class="block-note"></p>
+          <div id="questions" class="questions"></div>
+          <div id="answer" class="answer" aria-live="polite"></div>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="credits">
+      <span id="credits-data"></span>
+      <span>Pitch control adapted from LaurieOnTracking (MIT).</span>
+      <span>Regista is open source (AGPL-3.0).</span>
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

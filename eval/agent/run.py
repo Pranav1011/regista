@@ -98,6 +98,15 @@ def run(split: str, model: str, think, limit: int | None = None) -> Path:
     return out
 
 
+def rescore(path: Path) -> None:
+    """Recompute scores for stored answers (scorer changes only; no model is run)."""
+    toolbox = Toolbox(io.data_dir() / "store")
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    for r in rows:
+        r["score"] = score(r["question"], r["answer"], toolbox)
+    path.write_text("".join(json.dumps(r, default=str) + "\n" for r in rows))
+
+
 def load(path: Path) -> pd.DataFrame:
     rows = []
     for line in path.read_text().splitlines():
@@ -208,7 +217,12 @@ def main() -> None:
     ap.add_argument("--think", default=None, help="true, false, low, medium or high")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--rescore", action="store_true", help="re-score stored dev answers")
     args = ap.parse_args()
+    if args.rescore:
+        for f in sorted(RESULTS.glob("dev_*.jsonl")):
+            rescore(f)
+            print(f"rescored {f}")
     if args.split:
         model, think = args.model, args.think
         if args.split == "test":

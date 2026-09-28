@@ -35,6 +35,10 @@ not available. Do not guess.
 - When you report a formation, also report its margin and say when it is a close call; \
 exact formation labels are noisy.
 - Passing-option values are model estimates, not facts.
+- To compare the two teams, call the tool once for each team and compare the results.
+- For "when" questions about tactical changes, use find_moments; it returns the clock of \
+each detected moment.
+- To find which player passed most, use get_team_passing.
 - Keep answers short: two to four sentences, with the match clock of what you describe.
 """
 
@@ -69,13 +73,14 @@ class OllamaProvider:
         temperature: float = 0.0,
         seed: int = 0,
         keep_alive: str = "10m",
+        num_ctx: int = 16384,  # the system prompt, tool schemas, and results exceed 4k tokens
     ):
         import ollama
 
         self.name = model
         self.think = think
         self.keep_alive = keep_alive
-        self.options = {"temperature": temperature, "seed": seed}
+        self.options = {"temperature": temperature, "seed": seed, "num_ctx": num_ctx}
         self.client = ollama.Client(host=host)
 
     def chat(self, messages: list[dict], tools: list[dict] | None = None) -> ProviderReply:

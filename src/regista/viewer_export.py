@@ -3,7 +3,7 @@
 Files:
 - ``manifest.json``: match, split label (tuning match / held out), periods, object
   order, frame rate, credits
-- ``frames.bin.gz``: positions at 10 fps, int16 decimetres, x then y per object,
+- ``frames.i16z``: gzip-compressed positions at 10 fps, int16 decimetres, x then y per object,
   ``-32768`` when an object is not tracked; one block of objects per frame
 - ``cards.json``: causal formation cards per minute (the trailing-window state a
   live viewer may show at that time, never a window with future frames)
@@ -21,7 +21,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from regista import io
 from regista.clock import match_clock
+from regista.schema import Source
 from regista.store import Store
 
 VIEWER_FPS = 10.0
@@ -33,13 +35,15 @@ CREDITS = {
 }
 
 
-def _objects(frames: pd.DataFrame) -> list[dict]:
+def _objects(frames: pd.DataFrame, jerseys: dict[str, int]) -> list[dict]:
+    """Ball first, then players; each player labelled with their shirt number."""
     players = frames[frames["team"] != "ball"].drop_duplicates("player_id")[["player_id", "team"]]
     players = players.sort_values(["team", "player_id"], ascending=[False, True])
     objs = [{"id": "ball", "team": "ball", "label": ""}]
     for r in players.itertuples():
-        num = "".join(ch for ch in r.player_id.split("_")[-1] if ch.isdigit())[-2:]
-        objs.append({"id": r.player_id, "team": r.team, "label": num or r.player_id[-2:]})
+        if r.player_id not in jerseys:
+            raise ValueError(f"no shirt number for {r.player_id}")
+        objs.append({"id": r.player_id, "team": r.team, "label": str(jerseys[r.player_id])})
     return objs
 
 
@@ -77,14 +81,21 @@ def _positions(frames: pd.DataFrame, objs: list[dict]) -> tuple[bytes, list[dict
     return np.concatenate(blocks).tobytes(), periods
 
 
-def export_match(store_path: Path, out_root: Path, split_label: str) -> Path:
+def export_match(
+    store_path: Path, out_root: Path, split_label: str, min_coverage_min: float
+) -> Path:
     store = Store(store_path)
     frames = store.table("frames")
-    objs = _objects(frames)
+    players = io.read_players(Source(store.source), store.match_id)
+    objs = _objects(
+        frames, dict(zip(players["player_id"], players["jersey_no"].astype(int), strict=True))
+    )
     blob, periods = _positions(frames, objs)
     out = Path(out_root) / f"{store.source}-{store.match_id}"
     out.mkdir(parents=True, exist_ok=True)
-    (out / "frames.bin.gz").write_bytes(gzip.compress(blob, compresslevel=9))
+    # gzip body with a neutral extension, so no server adds Content-Encoding and the
+    # viewer always decompresses it itself
+    (out / "frames.i16z").write_bytes(gzip.compress(blob, compresslevel=9))
 
     stream = store.table("stream_windows")
     median_margin = float(stream["margin_out"].median())
@@ -94,7 +105,7 @@ def export_match(store_path: Path, out_root: Path, split_label: str) -> Path:
             "period": int(r.period),
             "t": float(r.t_end),
             "team": r.team,
-            "usable": bool(r.coverage_s >= 240 - 1e-6),
+            "usable": bool(r.coverage_s >= min_coverage_min * 60 - 1e-6),
         }
         for ph in ("out", "in"):
             label = getattr(r, f"label_{ph}")

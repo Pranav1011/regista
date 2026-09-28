@@ -58,6 +58,7 @@ use its absolute path (`which uv`) as `command`.
 | `get_shape` | Line height, length, width, compactness (median of 5-minute medians) |
 | `get_press_stats` | Press intensity (defender within 5 yd of the carrier), overall and by pitch third |
 | `get_pass_network` | Pass counts between teammates (inferred from tracking) and mean positions |
+| `get_team_passing` | A team's players ranked by pass attempts, with completion share |
 | `get_player_passes` | A player's attempts, completions, receptions, and pass ids |
 | `get_passing_options` | At one pass: a model success estimate for every option (labelled "model estimate") |
 | `find_moments` | Back-line changes, press changes, and line-height shifts from the causal detectors |

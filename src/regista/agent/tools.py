@@ -62,6 +62,20 @@ SUPPORTED = (
 CLOCK_TOLERANCE_S = 1.0  # a clock may sit up to 1 s outside the first/last recorded frame
 
 
+def moment_type(text: str) -> str:
+    """Map a moment type or a plain description of one onto a detector name."""
+    t = text.lower().replace("-", " ").replace("_", " ")
+    if "press" in t:
+        return "press_change"
+    if "height" in t or ("line" in t and ("high" in t or "deep" in t or "shift" in t)):
+        return "line_height_shift"
+    if "back" in t or "defender" in t or "line" in t or "formation" in t:
+        return "back_line_change"
+    raise ToolError(
+        f"unknown moment type {text!r}; use back_line_change, press_change, or line_height_shift"
+    )
+
+
 class ToolError(ValueError):
     """Invalid tool input (e.g. a time outside the match); the message is user-facing."""
 
@@ -172,6 +186,22 @@ class PassSummary(BaseModel):
     clock: str
     to_player: str
     completed: bool
+
+
+class PlayerPassing(BaseModel):
+    player_id: str
+    attempted: int
+    completed: int
+    completion_share: float
+    received: int
+
+
+class TeamPassingResult(BaseModel):
+    match: str
+    team: Team
+    players: list[PlayerPassing]
+    evidence: list[Evidence]
+    notes: list[str]
 
 
 class PlayerPassesResult(BaseModel):
@@ -638,6 +668,36 @@ class Toolbox:
             ],
         )
 
+    def get_team_passing(
+        self, match: str, team: Team, from_clock: str | None = None, to_clock: str | None = None
+    ) -> TeamPassingResult:
+        """A team's players ranked by pass attempts, with completions and receptions."""
+        m = self._match(match)
+        segs = m.segments(from_clock, to_clock)
+        pm = m.store.table("pass_moments")
+        pm = pm[_in_segments(pm, segs) & (pm["team"] == team)]
+        made = pm.groupby("from_player").agg(
+            attempted=("completed", "size"), completed=("completed", "sum")
+        )
+        received = pm[pm["completed"] == 1].groupby("to_player").size()
+        made = made.sort_values(["attempted", "completed"], ascending=False)
+        return TeamPassingResult(
+            match=m.key,
+            team=team,
+            players=[
+                PlayerPassing(
+                    player_id=pid,
+                    attempted=int(r.attempted),
+                    completed=int(r.completed),
+                    completion_share=round(float(r.completed / r.attempted), 4),
+                    received=int(received.get(pid, 0)),
+                )
+                for pid, r in made.iterrows()
+            ],
+            evidence=[m.evidence(p, a, b) for p, a, b in segs],
+            notes=["Passes are inferred from tracking (detector v2).", ANONYMISED_NOTE],
+        )
+
     def get_passing_options(self, match: str, pass_id: int) -> PassingOptionsResult:
         """At one pass moment: model success estimate for the pass played and every option."""
         m = self._match(match)
@@ -678,17 +738,20 @@ class Toolbox:
     def find_moments(
         self,
         match: str,
-        type: MomentType | None = None,
+        type: str | None = None,
         team: Team | None = None,
         from_clock: str | None = None,
         to_clock: str | None = None,
     ) -> MomentsResult:
-        """Detected tactical moments (causal detectors), optionally filtered by type, team, time."""
+        """Detected tactical moments (causal detectors), optionally filtered by type, team, time.
+
+        type: back_line_change, press_change, or line_height_shift (omit for all).
+        """
         m = self._match(match)
         segs = m.segments(from_clock, to_clock)
         mo = m.store.table("moments")
         if type:
-            mo = mo[mo["type"] == type]
+            mo = mo[mo["type"] == moment_type(type)]
         if team:
             mo = mo[mo["team"] == team]
         mo = mo[_in_segments(mo, segs, "emit_t")].sort_values(["period", "emit_t"])
@@ -726,6 +789,7 @@ TOOL_NAMES = (
     "get_shape",
     "get_press_stats",
     "get_pass_network",
+    "get_team_passing",
     "get_player_passes",
     "get_passing_options",
     "find_moments",

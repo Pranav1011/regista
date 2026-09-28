@@ -102,3 +102,16 @@ def test_mcp_server_lists_tools_and_calls_one(root):
     assert set(TOOL_NAMES) | {"list_matches"} <= names
     assert not ok.is_error and ok.structured_content["match"] == MATCH
     assert bad.is_error and "outside the recorded match" in bad.content[0].text
+
+
+def test_team_passing_ranks_players_and_moment_types_accept_plain_words(tools):
+    r = tools.get_team_passing(MATCH, "home")
+    assert r.players and r.players[0].attempted >= r.players[-1].attempted
+    assert all(0 <= p.completion_share <= 1 for p in r.players)
+    from regista.agent.tools import moment_type
+
+    assert moment_type("pressing change") == "press_change"
+    assert moment_type("back line") == "back_line_change"
+    assert moment_type("line_height_shift") == "line_height_shift"
+    with pytest.raises(ToolError, match="unknown moment type"):
+        tools.find_moments(MATCH, type="goals")

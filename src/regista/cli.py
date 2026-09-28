@@ -104,18 +104,23 @@ def mcp_cmd(store_root: Path = typer.Option(None, help="Store root (default data
 def export_viewer_cmd(
     game: list[int] = typer.Option([1, 2, 3], help="Metrica sample games to export."),
     out: Path = typer.Option(Path("viewer/public/data"), help="Viewer data directory."),
+    moments: Path = typer.Option(DEFAULT_MOMENTS, help="Frozen detector configuration."),
 ) -> None:
     """Export Metrica match stores for the static viewer (games 1-2 are tuning matches)."""
+    import json
+
     from regista.viewer_export import export_match
 
+    coverage = json.loads(moments.read_text())["detectors"]["min_coverage_min"]
     tuning = {1, 2}
+    index = []
     for g in game:
-        label = (
-            "tuning match (Metrica game used to design thresholds)" if g in tuning else "held out"
-        )
-        path = export_match(io.data_dir() / "store" / "metrica" / str(g), out, label)
+        label = "tuning match" if g in tuning else "held out"
+        path = export_match(io.data_dir() / "store" / "metrica" / str(g), out, label, coverage)
         size = sum(f.stat().st_size for f in path.iterdir())
+        index.append({"id": path.name, "title": f"Metrica sample game {g}", "split": label})
         typer.echo(f"exported {path} ({size / 1e6:.1f} MB)")
+    (out / "index.json").write_text(json.dumps(index, indent=1))
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@ class Question:
     template: str
     question: str
     gold: dict
-    expected_tools: list[str]
+    expected_tools: list[list[str]]  # any one of these tool sets is a valid route
     gold_range: dict | None = None  # {"period", "t_from", "t_to"} for citation checks
     scoring: str = ""
     extra: dict = field(default_factory=dict)
@@ -49,8 +49,9 @@ class Question:
         return asdict(self)
 
 
-def _clock_range(period: int, t0: float, t1: float) -> tuple[str, str]:
-    return match_clock(period, t0), match_clock(period, t1)
+def _clock_range(period: int, t0: float, t1: float, t_max: float) -> tuple[str, str]:
+    """Clock strings for a window, with the end clamped to the last recorded frame."""
+    return match_clock(period, t0), match_clock(period, min(t1, t_max))
 
 
 def _clock_seconds(match_clock_text: str) -> float:
@@ -68,6 +69,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
     store = toolbox._match(match).store
     formations = store.table("formations").dropna(subset=["label"])
     median_margin = float(store.table("formations")["margin"].median())
+    t_max = {int(p): v["t_max"] for p, v in store.manifest["periods"].items()}
 
     def add(category, template, question, gold, tools, gold_range=None, scoring="", **extra):
         qs.append(
@@ -88,13 +90,13 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
     # ---- lookup: formation in a clear (high-margin) window
     clear = formations[formations["margin"] >= median_margin]
     for r in clear.sample(n=min(2, len(clear)), random_state=rng.randrange(10**6)).itertuples():
-        a, b = _clock_range(r.period, r.t_start, r.t_end)
+        a, b = _clock_range(r.period, r.t_start, r.t_end, t_max[int(r.period)])
         add(
             "lookup",
             "formation_window",
             f"What formation did the {r.team} team use {PHASE_TEXT[r.phase]} between {a} and {b}?",
             {"label": r.label},
-            ["get_formation"],
+            [["get_formation"]],
             {"period": int(r.period), "t_from": float(r.t_start), "t_to": float(r.t_end)},
             "answer names the gold label",
         )
@@ -108,7 +110,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             f"What was the {team} team's defensive line height out of possession in the "
             f"{'first' if half == 1 else 'second'} half?",
             {"value": r.line_height_m, "tolerance": 1.0},
-            ["get_shape"],
+            [["get_shape"]],
             {"period": half, "t_from": 0.0, "t_to": 1e9},
             "within 1.0 m of the tool value",
         )
@@ -121,7 +123,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
         "top_pass_pair",
         f"Which two {team} players combined for the most passes in the match?",
         {"players": [top.from_player, top.to_player]},
-        ["get_pass_network"],
+        [["get_pass_network"], ["get_team_passing"]],
         None,
         "answer names both players of the top directed pair",
     )
@@ -139,7 +141,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             "press_after",
             f"Which team pressed more intensely after {clock}?",
             {"team": max(vals, key=vals.get), "values": vals},
-            ["get_press_stats"],
+            [["get_press_stats"]],
             None,
             "answer names the team with the higher press intensity",
         )
@@ -153,7 +155,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             f"Which team held a higher defensive line out of possession in the "
             f"{'first' if half == 1 else 'second'} half?",
             {"team": max(vals, key=vals.get), "values": vals},
-            ["get_shape"],
+            [["get_shape"]],
             None,
             "answer names the team with the higher line",
         )
@@ -173,7 +175,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
                 f"first_{kind}",
                 f"When did the {team} team first {text}, according to Regista's detectors?",
                 {"clock": first.emit_clock, "tolerance_min": 1.0},
-                ["find_moments"],
+                [["find_moments"]],
                 {"period": first.period, "t_from": 0.0, "t_to": 1e9},
                 "answer gives the emit clock within one minute",
             )
@@ -190,7 +192,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
         f"Which {team} player made the most passes, and what share of their pass attempts "
         f"were completed?",
         {"player": passer, "completion": pp.completed / pp.attempted, "tolerance_pct": 2.0},
-        ["get_pass_network", "get_player_passes"],
+        [["get_team_passing"], ["get_pass_network", "get_player_passes"]],
         None,
         "names the player and a completion share within 2 percentage points",
     )
@@ -216,7 +218,7 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
                 f"When the {first.team} team's pressing first changed, what formation were they "
                 f"using out of possession at that moment?",
                 {"label": f["label"].iat[0]},
-                ["find_moments", "get_formation"],
+                [["find_moments", "get_formation"]],
                 {
                     "period": first.period,
                     "t_from": float(f["t_start"].iat[0]),
@@ -245,19 +247,19 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             {"decline": True},
             [],
             None,
-            "declines (says it is not available or outside the match) and states no numbers",
+            "declines (not available / outside the match); any number must be grounded",
         )
 
     # ---- reliability: formation in a low-margin window
     close = formations[formations["margin"] < median_margin]
     for r in close.sample(n=min(3, len(close)), random_state=rng.randrange(10**6)).itertuples():
-        a, b = _clock_range(r.period, r.t_start, r.t_end)
+        a, b = _clock_range(r.period, r.t_start, r.t_end, t_max[int(r.period)])
         add(
             "reliability",
             "close_call_formation",
             f"What formation did the {r.team} team use {PHASE_TEXT[r.phase]} between {a} and {b}?",
             {"label": r.label, "runner_up": r.runner_up, "margin": float(r.margin)},
-            ["get_formation"],
+            [["get_formation"]],
             {"period": int(r.period), "t_from": float(r.t_start), "t_to": float(r.t_end)},
             "flags the ambiguity (close call, low margin, runner-up)",
         )
@@ -278,10 +280,8 @@ def score(q: dict, answer: dict, toolbox: Toolbox) -> dict:
     g = q["gold"]
     tmpl = q["template"]
     if q["category"] == "unanswerable":
-        declined = bool(DECLINE.search(text))
-        correct = declined and not _numbers(
-            re.sub(r"\d{1,3}:\d{2}|\d-\d(-\d)+|[A-Za-z]+_?\d+", "", text)
-        )
+        # a correct refusal declines and states only numbers the tools returned
+        correct = bool(DECLINE.search(text)) and answer["status"] == "verified"
     elif tmpl in ("formation_window", "formation_at_press_change"):
         correct = g["label"] in text
     elif tmpl == "close_call_formation":
@@ -318,7 +318,8 @@ def score(q: dict, answer: dict, toolbox: Toolbox) -> dict:
     else:
         raise ValueError(f"no scorer for template {tmpl}")
 
-    tools_ok = set(q["expected_tools"]) <= set(used) if q["expected_tools"] else True
+    alternatives = q["expected_tools"]
+    tools_ok = any(set(alt) <= set(used) for alt in alternatives) if alternatives else True
     citations = answer["citations"]
     valid = _citations_valid(citations, q, toolbox)
     return {
