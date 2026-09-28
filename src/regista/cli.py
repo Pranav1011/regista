@@ -123,5 +123,20 @@ def export_viewer_cmd(
     (out / "index.json").write_text(json.dumps(index, indent=1))
 
 
+@app.command("serve")
+def serve_cmd(
+    port: int = typer.Option(8765, help="Port on localhost."),
+    viewer_dist: Path = typer.Option(Path("viewer/dist"), help="Built viewer directory."),
+    frozen: Path = typer.Option(Path("eval/agent/frozen.json"), help="Frozen agent config."),
+) -> None:
+    """Serve the viewer locally with free-form questions to the local agent (Ollama)."""
+    import uvicorn
+
+    from regista.agent.serve import create_app
+
+    typer.echo(f"Regista viewer on http://127.0.0.1:{port}")
+    uvicorn.run(create_app(viewer_dist, frozen), host="127.0.0.1", port=port, log_level="warning")
+
+
 if __name__ == "__main__":
     app()

@@ -1,6 +1,6 @@
 import "./style.css";
 import {
-  type Alert, type Card, type Instant, type MatchData, before, clock, indexAt, instantAt,
+  type Alert, type AnswerItem, type Card, type Instant, type MatchData, before, clock, indexAt, instantAt,
   loadIndex, loadMatch, parseClock,
 } from "./data";
 import { Pitch } from "./pitch";
@@ -136,9 +136,12 @@ function renderAnswers() {
 }
 
 function showAnswer(k: number) {
-  const item = state.data!.answers!.items[k];
+  renderAnswer(state.data!.answers!.items[k]);
   state.activeQuestion = k;
   $("questions").querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(i === k)));
+}
+
+function renderAnswer(item: AnswerItem) {
   const cites = el("div", { className: "cites" }, ...item.citations.map((c) =>
     el("button", { type: "button", textContent: `${c.clock_start}–${c.clock_end}`,
       ariaLabel: `Seek to ${c.clock_start}`, onclick: () => seek(parseClock(c.clock_start, c.period)) })));
@@ -224,6 +227,30 @@ async function open(id: string, split: string) {
   render(true);
 }
 
+/** Local mode (`regista serve`): free-form questions to the local agent. */
+async function enableLocalAsk() {
+  const r = await fetch("api/health").catch(() => null);
+  if (!r || !r.ok || !(r.headers.get("content-type") ?? "").includes("json")) return;
+  const health = (await r.json()) as { model: string };
+  const form = $<HTMLFormElement>("ask-form");
+  form.hidden = false;
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const input = $<HTMLInputElement>("ask-input");
+    const question = input.value.trim();
+    if (!question || !state.data) return;
+    const m = state.data.manifest;
+    $("answer").replaceChildren(el("p", { className: "status", textContent: `Asking ${health.model} locally…` }));
+    const res = await fetch("api/ask", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ question, match: `${m.source}/${m.match_id}` }) });
+    if (!res.ok) {
+      $("answer").replaceChildren(el("p", { className: "status", textContent: `The agent could not answer (${res.status}).` }));
+      return;
+    }
+    renderAnswer((await res.json()) as AnswerItem);
+  };
+}
+
 async function init() {
   const index = await loadIndex();
   const select = $<HTMLSelectElement>("match-select");
@@ -256,6 +283,7 @@ async function init() {
     seek(parseClock(at, stoppage || minutes < 45 ? 1 : 2));
   }
   requestAnimationFrame(tick);
+  await enableLocalAsk();
 }
 
 init().catch((err) => {

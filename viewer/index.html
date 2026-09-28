@@ -76,6 +76,13 @@
         <section class="block" aria-labelledby="ask-title">
           <h2 id="ask-title">Ask the analyst</h2>
           <p id="ask-provenance" class="block-note"></p>
+          <form id="ask-form" class="ask-form" hidden>
+            <label for="ask-input" class="label">Your question</label>
+            <div class="ask-row">
+              <input id="ask-input" type="text" maxlength="500" placeholder="e.g. How did the away press change after 60:00?" />
+              <button type="submit" class="btn-primary">Ask</button>
+            </div>
+          </form>
           <div id="questions" class="questions"></div>
           <div id="answer" class="answer" aria-live="polite"></div>
         </section>
