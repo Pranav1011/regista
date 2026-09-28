@@ -138,3 +138,18 @@ def test_comparisons_state_both_values_which_is_higher_and_the_gap(tools):
     p = tools.get_press_stats(MATCH, "home").press_intensity_comparison
     assert p.home == tools.get_press_stats(MATCH, "home").by_third[0].press_intensity
     assert p.away == tools.get_press_stats(MATCH, "away").by_third[0].press_intensity
+
+
+def test_clock_before_a_late_recording_start_is_clamped(tmp_path):
+    """Synthetic: the second half's recording starts 3 s late, as in some SkillCorner games."""
+    frames = make_match(MatchSpec(period_s=600.0, fps=5.0))
+    frames = frames[~((frames["period"] == 2) & (frames["t"] < 3.0))]
+    build_store(frames, *CONFIGS, "synthetic", "late", tmp_path)
+    tb = Toolbox(tmp_path)
+    r = tb.get_team_dimensions("synthetic/late", "home", "out", "45:00", None)
+    assert {e.period for e in r.evidence} == {2}
+    assert r.evidence[0].clock_start == "45:03"
+    first = tb.get_team_dimensions("synthetic/late", "home", "out", "00:00", "45:00")
+    assert {e.period for e in first.evidence} == {1}
+    with pytest.raises(ToolError, match="outside the recorded match"):
+        tb.get_formation("synthetic/late", "home", "out", "30:00", "40:00")

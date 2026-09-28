@@ -369,6 +369,10 @@ class MatchData:
         if period not in periods:
             raise ToolError(f"{clock!r} is outside the match (periods {periods})")
         lo, hi = self.period_range(period)
+        if 0 <= t < lo - CLOCK_TOLERANCE_S:
+            # the period had started but the recording began late (e.g. "45:00" when the
+            # second half's first frame is at 45:03): clamp to the first recorded frame
+            return period, lo
         if not (lo - CLOCK_TOLERANCE_S <= t <= hi + CLOCK_TOLERANCE_S):
             raise ToolError(
                 f"{clock!r} is outside the recorded match: period {period} runs "
