@@ -1,10 +1,10 @@
 {
   "model": "qwen3.5:9b",
   "think": false,
-  "prompt_hash": "61fc11cdd2fe",
+  "prompt_hash": "08a94cfcf81b",
   "judge": "gemma4:12b",
   "frozen_at": "2026-09-28",
-  "reason": "tied best dev accuracy with gemma4:12b; lower latency (p50 and p95)",
+  "reason": "tied best dev accuracy with gemma4:12b on the 38-question set, lower latency; re-frozen on the reviewed 124-question dev set (third and final dev iteration)",
   "dev": {
     "gemma4_12b": {
       "overall_accuracy": 0.974,
@@ -25,14 +25,26 @@
       "number_grounding": 0.921
     },
     "qwen3.5_9b": {
-      "overall_accuracy": 0.906,
-      "latency_p50": 11.35,
-      "latency_p95": 19.02,
-      "number_grounding": 0.991,
-      "false_premise_full_correction": 0.474,
-      "note": "117 questions incl. paraphrase and false-premise categories; other models ran on the earlier 38-question set and loop"
+      "overall_accuracy": 0.968,
+      "per_category": {
+        "comparison": 1.0,
+        "false_premise": 0.833,
+        "lookup": 1.0,
+        "multi_step": 1.0,
+        "paraphrase": 0.985,
+        "reliability": 1.0,
+        "temporal": 1.0,
+        "unanswerable": 1.0
+      },
+      "latency_p50": 9.68,
+      "latency_p95": 15.48,
+      "number_grounding": 1.0,
+      "citation_validity": 1.0,
+      "false_premise_full_correction": 0.5
     }
   },
-  "code_hash": "96e715fdc87f",
-  "dev_question_count": 117
+  "code_hash": "df1eda6a080d",
+  "dev_question_count": 124,
+  "question_bank_hash": "ad9c0540b7f6",
+  "scorer_hash": "cc1ecbd13ea0"
 }

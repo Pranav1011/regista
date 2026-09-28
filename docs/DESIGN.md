@@ -328,6 +328,39 @@ disclosed here; the test split was not looked at.
   (`questions.py`) and the scorers (`scoring.py`, `premise_judge.py`); the test
   split refuses to start if any pinned hash differs.
 
+**Final dev iteration (third run, 124 questions), then frozen.** The second run on
+the reviewed bank showed two infrastructure and tool problems, fixed before the
+last run:
+- *Malformed tool calls.* `fp_extra_time` failed on both matches with an Ollama
+  500 (qwen3.5:9b emitted a `<parameter>` tag before `<function>`). Bisecting the
+  schema changes since the archived run found no single cause: reverting any one
+  of them (the `get_team_dimensions` rename, or either tool description) removed
+  the error, so the malformed output is sensitive to small prompt changes rather
+  than caused by one of them. At temperature 0 the retry repeated the same
+  malformed output, so the retry now states the problem ("your previous tool call
+  was malformed; call one function with valid arguments") and decodes with
+  sampling (temperature 0.7, fixed seed 1, so runs stay reproducible); a second
+  failure still ends in "couldn't compute" and an unverified answer. The final
+  run had no provider errors.
+- *Half ranges and comparisons.* Two `higher_line` rewordings called
+  `get_team_dimensions` with no range and so compared whole-match values; two
+  others had the right values but named the wrong team as higher. Every tool
+  that takes a clock range now also takes `period` (1 or 2, stoppage included),
+  and `get_team_dimensions` and `get_press_stats` return both teams' values
+  with which is higher and the difference, computed in code.
+
+The freeze criterion was per template, on templates common to the archived run
+and the final run, because the false-premise set changed with the review. No
+common template regressed; the report gives the final numbers. Remaining
+failures are model weaknesses, disclosed rather than fixed:
+- `fp_third_half` (both matches): the model accepts "the third half" and reports
+  second-half moments as if they were in it.
+- `fp_extra_time` (metrica/2): with the new `period` argument the model reads
+  "the first period of extra time" as period 2 and explains a real second-half
+  line-height shift.
+- `top_pass_pair`, first rewording (metrica/2): "combined for the most passes"
+  is read as the two players with the most pass attempts each.
+
 **Consequence.** Answers take about 11-19 s on a laptop, so the hosted demo shows
 pre-generated answers and free-form questions need `regista serve` locally. The
 dev set is small (38 questions, one wrong answer for the chosen model), so the

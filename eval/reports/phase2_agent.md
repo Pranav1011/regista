@@ -7,10 +7,10 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 | split   | model       |   questions |   accuracy |   tool selection |   citation validity |   number grounding |   abstention accuracy |   false abstention |   latency p50 (s) |   latency p95 (s) |   false premise full correction | false premise scorer   |
 |:--------|:------------|------------:|-----------:|-----------------:|--------------------:|-------------------:|----------------------:|-------------------:|------------------:|------------------:|--------------------------------:|:-----------------------|
-| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |             15.37 |            29.44  |                         nan     |                        |
-| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |             15.88 |            48.587 |                         nan     |                        |
-| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |              5.8  |            11.32  |                         nan     |                        |
-| dev     | qwen3.5:9b  |         124 |      0.903 |            0.939 |               0.981 |              0.968 |                   1   |              0.096 |              9.86 |            15.732 |                           0.389 | pattern                |
+| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |             15.37 |            29.44  |                           nan   |                        |
+| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |             15.88 |            48.587 |                           nan   |                        |
+| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |              5.8  |            11.32  |                           nan   |                        |
+| dev     | qwen3.5:9b  |         124 |      0.968 |            0.947 |               1     |              1     |                   1   |              0.114 |              9.68 |            15.478 |                             0.5 | judge                  |
 
 ## dev / gemma4:12b: accuracy per category
 
@@ -50,46 +50,53 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 | q_category    |   questions |   accuracy |   tool_selection |
 |:--------------|------------:|-----------:|-----------------:|
 | comparison    |           6 |      1     |            1     |
-| false_premise |          18 |      0.611 |            0.722 |
+| false_premise |          18 |      0.833 |            0.778 |
 | lookup        |          10 |      1     |            1     |
 | multi_step    |           4 |      1     |            1     |
-| paraphrase    |          66 |      0.924 |            0.97  |
+| paraphrase    |          66 |      0.985 |            0.97  |
 | reliability   |           6 |      1     |            1     |
 | temporal      |           4 |      1     |            1     |
 | unanswerable  |          10 |      1     |            1     |
+
+### False premise: LLM judge (primary) vs pattern rule (secondary)
+
+18 items. The judge claimed a rejection in 15; 0 of its quotes were not found in the answer and count as not rejected. Premise rejected: judge 0.83, pattern 0.72; agreement 0.89, Cohen's kappa 0.68. Correct (rejection and grounded): judge 0.83, pattern 0.72; agreement 0.89, kappa 0.68.
+
+The pattern rule's agreement is uninformative for templates whose fact to name is a team (fp_wrong_team, fp_press_harder, fp_higher_line): a team name appears in almost every answer.
+Without them (13 items): correct agreement 0.85, kappa 0.65.
 
 ### Paraphrase robustness (accuracy per wording)
 
 | q_template                |   original |   rewording 1 |   rewording 2 |   rewording 3 |   spread |
 |:--------------------------|-----------:|--------------:|--------------:|--------------:|---------:|
-| close_call_formation      |          1 |           1   |           1   |           1   |      0   |
-| first_back_line_change    |          1 |           1   |           1   |           1   |      0   |
-| first_press_change        |          1 |           1   |           1   |           1   |      0   |
-| formation_at_press_change |          1 |           1   |           1   |           1   |      0   |
-| formation_window          |          1 |           1   |           1   |           1   |      0   |
-| higher_line               |          1 |           0   |           0.5 |           0.5 |      1   |
-| line_height_half          |          1 |           1   |           1   |           1   |      0   |
-| press_after               |          1 |           1   |           1   |           1   |      0   |
-| top_pass_pair             |          1 |           0.5 |           1   |           1   |      0.5 |
-| top_passer_completion     |          1 |           1   |           1   |           1   |      0   |
-| xg                        |          1 |           1   |           1   |           1   |      0   |
+| close_call_formation      |          1 |           1   |             1 |             1 |      0   |
+| first_back_line_change    |          1 |           1   |             1 |             1 |      0   |
+| first_press_change        |          1 |           1   |             1 |             1 |      0   |
+| formation_at_press_change |          1 |           1   |             1 |             1 |      0   |
+| formation_window          |          1 |           1   |             1 |             1 |      0   |
+| higher_line               |          1 |           1   |             1 |             1 |      0   |
+| line_height_half          |          1 |           1   |             1 |             1 |      0   |
+| press_after               |          1 |           1   |             1 |             1 |      0   |
+| top_pass_pair             |          1 |           0.5 |             1 |             1 |      0.5 |
+| top_passer_completion     |          1 |           1   |             1 |             1 |      0   |
+| xg                        |          1 |           1   |             1 |             1 |      0   |
 
 ## Ten worst dev failures (all models)
 
 Ranked: ungrounded first, then wrong tool, then slowest.
 
-| model       | q_match   | q_category    | q_question                                                                               | q_gold                                                                           | tools                        | status     | answer_text                                                                                                                                                      |
-|:------------|:----------|:--------------|:-----------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------|:-----------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| qwen3.5:9b  | metrica/1 | false_premise | Why did the home team drop deep in the first period of extra time?                       | {"must_mention_any": ["extra time", "90", "no"], "truth": "the match had no extr |                              | unverified | I couldn't compute this: the model's reply could not be parsed (expected element type <function> but have <parameter> (status code: 500)).                       |
-| qwen3.5:9b  | metrica/2 | false_premise | Why did the home team drop deep in the first period of extra time?                       | {"must_mention_any": ["extra time", "90", "no"], "truth": "the match had no extr |                              | unverified | I couldn't compute this: the model's reply could not be parsed (expected element type <function> but have <parameter> (status code: 500)).                       |
-| gpt-oss:20b | metrica/2 | unanswerable  | What formation did the away team use out of possession at 115:00?                        | {"decline": true}                                                                | get_formation, get_formation | unverified | I’m sorry, but the match “metrica/2” only runs until 90 + 3:48, so there is no data for 115:00.                                                                  |
-| llama3.1:8b | metrica/1 | comparison    | Which team pressed more intensely after 30:00?                                           | {"team": "home", "values": {"home": 0.4124, "away": 0.3589}}                     | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
-| llama3.1:8b | metrica/2 | comparison    | Which team pressed more intensely after 30:00?                                           | {"team": "away", "values": {"home": 0.425, "away": 0.4633}}                      | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
-| qwen3.5:9b  | metrica/1 | false_premise | What did the away team change in the third half?                                         | {"must_mention_any": ["two", "2", "no", "not"], "truth": "the match has only two | find_moments                 | verified   | In the third half, the away team made two changes: at 76:00 they changed their back line (from a depth of 5.0m to 3.0m), and at 78:00 they adjusted their pressi |
-| qwen3.5:9b  | metrica/2 | false_premise | Why did the away team hold a higher defensive line than the home team in the first half? | {"must_mention_any": ["home"], "truth": "home held the higher line"}             | find_moments                 | verified   | The away team shifted their defensive line higher at 29:00 in the first half, moving from a median line height of 26.4369 metres to 44.2827 metres. This change  |
-| qwen3.5:9b  | metrica/2 | false_premise | What did the away team change in the third half?                                         | {"must_mention_any": ["two", "2", "no", "not"], "truth": "the match has only two | find_moments                 | verified   | In the third half, the away team made two changes: at 67:00 they changed their back line (from a depth of 4.0 to 5.0), and at 77:00 they increased their pressin |
-| qwen3.5:9b  | metrica/2 | paraphrase    | Which two away players combined for the most passes in the match?                        | {"pairs": [["away_15", "away_16"]]}                                              | get_team_passing             | verified   | The two away players who combined for the most passes in the match were away_15 and away_18, with 70 and 61 pass attempts respectively.                          |
-| gpt-oss:20b | metrica/1 | lookup        | Which two away players combined for the most passes in the match?                        | {"players": ["away_19", "away_21"]}                                              | get_team_passing             | verified   | The two away players who made the most passes were **away_21** with 77 attempts and **away_16** with 48 attempts.                                                |
+| model       | q_match   | q_category    | q_question                                                         | q_gold                                                                           | tools                        | status     | answer_text                                                                                                                                                      |
+|:------------|:----------|:--------------|:-------------------------------------------------------------------|:---------------------------------------------------------------------------------|:-----------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| gpt-oss:20b | metrica/2 | unanswerable  | What formation did the away team use out of possession at 115:00?  | {"decline": true}                                                                | get_formation, get_formation | unverified | I’m sorry, but the match “metrica/2” only runs until 90 + 3:48, so there is no data for 115:00.                                                                  |
+| llama3.1:8b | metrica/1 | comparison    | Which team pressed more intensely after 30:00?                     | {"team": "home", "values": {"home": 0.4124, "away": 0.3589}}                     | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
+| llama3.1:8b | metrica/2 | comparison    | Which team pressed more intensely after 30:00?                     | {"team": "away", "values": {"home": 0.425, "away": 0.4633}}                      | get_press_stats              | unverified | {"error": "empty time range '25:00' to '35:00'"}                                                                                                                 |
+| qwen3.5:9b  | metrica/2 | false_premise | What did the away team change in the third half?                   | {"must_mention_any": ["two", "2", "no", "not"], "truth": "the match has only two | find_moments                 | verified   | In the third half, the away team made two changes: at 67:00 they changed their back line (from a depth of 4.0 to 5.0), and at 77:00 they increased their pressin |
+| qwen3.5:9b  | metrica/1 | false_premise | What did the away team change in the third half?                   | {"must_mention_any": ["two", "2", "no", "not"], "truth": "the match has only two | find_moments                 | verified   | In the third half, the away team made two changes: at 76:00 they changed their back line (from a depth of 5.0m to 3.0m), and at 78:00 they adjusted their pressi |
+| qwen3.5:9b  | metrica/2 | false_premise | Why did the home team drop deep in the first period of extra time? | {"must_mention_any": ["extra time", "90", "no"], "truth": "the match had no extr | find_moments                 | verified   | The home team dropped deep in the first period of extra time (period=2) starting around 65:30, with a line height shift detected at 70:00. Their line height dec |
+| qwen3.5:9b  | metrica/2 | paraphrase    | Which two away players combined for the most passes in the match?  | {"pairs": [["away_15", "away_16"]]}                                              | get_team_passing             | verified   | The two away players who combined for the most passes in the match were away_15 and away_18, with 70 and 61 pass attempts respectively.                          |
+| gpt-oss:20b | metrica/1 | lookup        | Which two away players combined for the most passes in the match?  | {"players": ["away_19", "away_21"]}                                              | get_team_passing             | verified   | The two away players who made the most passes were **away_21** with 77 attempts and **away_16** with 48 attempts.                                                |
+| gpt-oss:20b | metrica/2 | lookup        | Which two away players combined for the most passes in the match?  | {"players": ["away_15", "away_16"]}                                              | get_team_passing             | verified   | The two away players who attempted the most passes were **away_15** with 70 attempts and **away_20** with 61 attempts.                                           |
+| gemma4:12b  | metrica/2 | lookup        | Which two away players combined for the most passes in the match?  | {"players": ["away_15", "away_16"]}                                              | get_team_passing             | verified   | The two away players who combined for the most passes in the match are away_15 (70 attempts) and away_18 (61 attempts).                                          |
 
 ## Summaries judged by gemma4:12b (dev)
 
@@ -113,10 +120,10 @@ Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00
 {
   "model": "qwen3.5:9b",
   "think": false,
-  "prompt_hash": "61fc11cdd2fe",
+  "prompt_hash": "08a94cfcf81b",
   "judge": "gemma4:12b",
   "frozen_at": "2026-09-28",
-  "reason": "tied best dev accuracy with gemma4:12b; lower latency (p50 and p95)",
+  "reason": "tied best dev accuracy with gemma4:12b on the 38-question set, lower latency; re-frozen on the reviewed 124-question dev set (third and final dev iteration)",
   "dev": {
     "gemma4_12b": {
       "overall_accuracy": 0.974,
@@ -137,16 +144,28 @@ Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00
       "number_grounding": 0.921
     },
     "qwen3.5_9b": {
-      "overall_accuracy": 0.906,
-      "latency_p50": 11.35,
-      "latency_p95": 19.02,
-      "number_grounding": 0.991,
-      "false_premise_full_correction": 0.474,
-      "note": "117 questions incl. paraphrase and false-premise categories; other models ran on the earlier 38-question set and loop"
+      "overall_accuracy": 0.968,
+      "per_category": {
+        "comparison": 1.0,
+        "false_premise": 0.833,
+        "lookup": 1.0,
+        "multi_step": 1.0,
+        "paraphrase": 0.985,
+        "reliability": 1.0,
+        "temporal": 1.0,
+        "unanswerable": 1.0
+      },
+      "latency_p50": 9.68,
+      "latency_p95": 15.48,
+      "number_grounding": 1.0,
+      "citation_validity": 1.0,
+      "false_premise_full_correction": 0.5
     }
   },
-  "code_hash": "96e715fdc87f",
-  "dev_question_count": 117
+  "code_hash": "df1eda6a080d",
+  "dev_question_count": 124,
+  "question_bank_hash": "ad9c0540b7f6",
+  "scorer_hash": "cc1ecbd13ea0"
 }
 ```
 
