@@ -102,7 +102,16 @@ def rescore(path: Path) -> None:
     """Recompute scores for stored answers (scorer changes only; no model is run)."""
     toolbox = Toolbox(io.data_dir() / "store")
     rows = [json.loads(line) for line in path.read_text().splitlines()]
+    fresh = {
+        q.qid: q.to_dict()
+        for m in {r["question"]["match"] for r in rows}
+        for q in generate(toolbox, m)
+    }
     for r in rows:
+        new = fresh.get(r["question"]["qid"])
+        if new is None or new["question"] != r["question"]["question"]:
+            raise RuntimeError(f"question {r['question']['qid']} changed wording; re-run it")
+        r["question"] = new  # updated gold definitions, same question text
         r["score"] = score(r["question"], r["answer"], toolbox)
     path.write_text("".join(json.dumps(r, default=str) + "\n" for r in rows))
 
@@ -163,7 +172,7 @@ def worst(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
 
 
 def write_report() -> Path:
-    files = sorted(RESULTS.glob("*.jsonl"))
+    files = sorted([*RESULTS.glob("dev_*.jsonl"), *RESULTS.glob("test_*.jsonl")])
     if not files:
         raise FileNotFoundError("no results yet; run a split first")
     lines = [
@@ -202,6 +211,62 @@ def write_report() -> Path:
             f"## {df['split'].iat[0]} / {df['model'].iat[0]}: accuracy per category",
             "",
             s["per_category"].round(3).to_markdown(),
+            "",
+        ]
+    dev_files = [f for f in files if f.name.startswith("dev_")]
+    if dev_files:
+        allf = pd.concat([load(f) for f in dev_files], ignore_index=True)
+        w = worst(allf)
+        w = w.assign(
+            q_gold=w["q_gold"].map(lambda g: json.dumps(g, default=str)[:80]),
+            answer_text=w["answer_text"].str.slice(0, 160).str.replace("\n", " "),
+            tools=w["tools"].map(", ".join),
+        )
+        lines += [
+            "## Ten worst dev failures (all models)",
+            "",
+            "Ranked: ungrounded first, then wrong tool, then slowest.",
+            "",
+            w.to_markdown(index=False),
+            "",
+        ]
+    for jf in sorted(RESULTS.glob("judge_*.jsonl")):
+        rows = [json.loads(line) for line in jf.read_text().splitlines()]
+        point = pd.DataFrame([r for r in rows if r["kind"] == "pointwise"])
+        pair = [r for r in rows if r["kind"] == "pairwise"]
+        split = jf.stem.split("_")[1]
+        lines += [
+            f"## Summaries judged by {rows[0]['judge']} ({split})",
+            "",
+            "Rubric scores 1-5 (faithful to the fact sheet, covers flagged moments, "
+            "states caveats); the judge is from a different model family than the agent.",
+            "",
+            point.groupby("model")[["faithful", "coverage", "caveats"]]
+            .mean()
+            .round(2)
+            .to_markdown(),
+            "",
+        ]
+        if pair:
+            agree = sum(r["order_agree"] for r in pair) / len(pair)
+            wins: dict[str, int] = {}
+            for r in pair:
+                if r["order_agree"]:
+                    winner = next(iter(set(r["verdicts"].values())))
+                    wins[winner] = wins.get(winner, 0) + 1
+            lines += [
+                f"Pairwise, both orders: {len(pair)} pairs; the verdict was the same in "
+                f"both orders for {agree:.2f} of them (1 - position bias). Consistent wins: "
+                + (", ".join(f"{k} {v}" for k, v in sorted(wins.items())) or "none")
+                + ".",
+                "",
+            ]
+    labels = HERE / "human_labels.jsonl"
+    if labels.exists():
+        lines += [
+            "## Judge-human agreement",
+            "",
+            "See `eval/agent/label.py`; computed once the 30 human labels exist.",
             "",
         ]
     if FROZEN.exists():

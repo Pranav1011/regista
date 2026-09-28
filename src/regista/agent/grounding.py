@@ -11,12 +11,22 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass, field
 
 _CLOCK = re.compile(r"\b\d{1,3}\+\d{1,2}(?::\d{2})?\b|\b\d{1,3}:\d{2}\b")
 _FORMATION = re.compile(r"\b\d-\d(?:-\d){1,3}\b")
 _NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?:[.,]\d+)*(?:\.\d+)?(\s?%| percent)?")
 _ID_LIKE = re.compile(r"\b[A-Za-z]+[_-]?\d+\b")  # player ids like home_11, P3573
+
+
+_DASHES = dict.fromkeys(map(ord, "\u2010\u2011\u2012\u2013\u2014\u2212"), "-")
+
+
+def normalise(text: str) -> str:
+    """Unicode dashes to '-', and '90 + 3:48' to '90+3:48', before any matching."""
+    text = unicodedata.normalize("NFKC", text).translate(_DASHES)
+    return re.sub(r"\b(45|90)\s*\+\s*(\d)", r"\1+\2", text)
 
 
 @dataclass
@@ -56,6 +66,7 @@ def _matches(value: float, decimals: int, percent: bool, sources: list[float]) -
 
 def check_numbers(answer: str, sources: list) -> GroundingResult:
     """Check that every number in ``answer`` appears in ``sources`` (tool outputs, question)."""
+    answer = normalise(answer)
     tokens, values = _source_values(sources)
     checked, ungrounded = [], []
     for pattern in (_CLOCK, _FORMATION, _ID_LIKE):

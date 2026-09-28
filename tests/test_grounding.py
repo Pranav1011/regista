@@ -36,3 +36,8 @@ def test_numbers_from_the_question_count_and_ids_are_ignored():
 def test_rounding_must_respect_written_precision():
     assert not check_numbers("line height 34.3 m", [{"x": 34.4}]).grounded
     assert check_numbers("line height 34 m", [{"x": 34.4}]).grounded
+
+
+def test_unicode_dashes_and_spaced_stoppage_clocks_are_normalised():
+    r = check_numbers("They played 4\u20112\u20113\u20111 until 45 + 2:00.", [TOOL])
+    assert r.grounded, r.ungrounded

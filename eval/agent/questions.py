@@ -12,6 +12,7 @@ import random
 import re
 from dataclasses import asdict, dataclass, field
 
+from regista.agent.grounding import normalise
 from regista.agent.tools import Toolbox, ToolError
 from regista.clock import match_clock, parse_clock
 
@@ -22,7 +23,8 @@ DECLINE = re.compile(
     r"(?:cannot|can't|unable to|no way to) (?:be )?(?:answer|determine|provide|"
     r"know|say|tell|calculate|compute)|outside (?:of )?the (?:recorded )?match|"
     r"(?:does not|doesn't|do not|don't) (?:have|include|contain|model|record|"
-    r"track|provide)|not (?:tracked|provided|included|supported)|anonymi[sz]ed",
+    r"track|provide)|not (?:tracked|provided|included|supported)|anonymi[sz]ed|"
+    r"no (?:data|information|record)",
     re.IGNORECASE,
 )
 AMBIGUITY = re.compile(
@@ -184,14 +186,20 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
     # ---- multi-step: most frequent passer and completion
     team = rng.choice(TEAMS)
     net = toolbox.get_pass_network(match, team, top_k=50)
-    passer = max(net.nodes, key=lambda n: n.passes_made).player_id
+    passer = max(net.nodes, key=lambda n: n.passes_made).player_id  # most completed passes
     pp = toolbox.get_player_passes(match, passer)
+    top_attempts = toolbox.get_team_passing(match, team).players[0]  # most attempts
+    # "made the most passes" can mean completed passes or attempts; both readings are accepted
+    accepted = [
+        {"player": passer, "completion": pp.completed / pp.attempted},
+        {"player": top_attempts.player_id, "completion": top_attempts.completion_share},
+    ]
     add(
         "multi_step",
         "top_passer_completion",
         f"Which {team} player made the most passes, and what share of their pass attempts "
         f"were completed?",
-        {"player": passer, "completion": pp.completed / pp.attempted, "tolerance_pct": 2.0},
+        {"accepted": accepted, "tolerance_pct": 2.0},
         [["get_team_passing"], ["get_pass_network", "get_player_passes"]],
         None,
         "names the player and a completion share within 2 percentage points",
@@ -210,21 +218,25 @@ def generate(toolbox: Toolbox, match: str, seed: int = 0) -> list[Question]:
             for m in store.table("moments").itertuples()
             if m.type == "press_change" and m.team == first.team
         )
-        f = f[(f["t_start"] <= emit_t.emit_t) & (f["t_end"] > emit_t.emit_t - 1e-6)]
+        f = f.sort_values("t_start").reset_index(drop=True)
+        containing = f.index[(f["t_start"] <= emit_t.emit_t) & (f["t_end"] > emit_t.emit_t - 1e-6)]
+        # "at that moment" is read as the window containing it or the one just before it
+        chosen = [i for k in containing for i in (k - 1, k) if 0 <= i < len(f)]
+        f = f.loc[chosen]
         if len(f) and t is not None:
             add(
                 "multi_step",
                 "formation_at_press_change",
                 f"When the {first.team} team's pressing first changed, what formation were they "
                 f"using out of possession at that moment?",
-                {"label": f["label"].iat[0]},
+                {"labels": sorted(set(f["label"].dropna()))},
                 [["find_moments", "get_formation"]],
                 {
                     "period": first.period,
-                    "t_from": float(f["t_start"].iat[0]),
-                    "t_to": float(f["t_end"].iat[0]),
+                    "t_from": float(f["t_start"].min()),
+                    "t_to": float(f["t_end"].max()),
                 },
-                "answer names the label of that window",
+                "answer names the label of the window containing that moment or the one before",
             )
 
     # ---- unanswerable
@@ -275,15 +287,17 @@ def _numbers(text: str) -> list[float]:
 
 def score(q: dict, answer: dict, toolbox: Toolbox) -> dict:
     """Correctness, tool selection, citation validity, abstention for one answer."""
-    text = answer["answer_text"]
+    text = normalise(answer["answer_text"])
     used = [t["tool"] for t in answer["tools_used"]]
     g = q["gold"]
     tmpl = q["template"]
     if q["category"] == "unanswerable":
         # a correct refusal declines and states only numbers the tools returned
         correct = bool(DECLINE.search(text)) and answer["status"] == "verified"
-    elif tmpl in ("formation_window", "formation_at_press_change"):
+    elif tmpl == "formation_window":
         correct = g["label"] in text
+    elif tmpl == "formation_at_press_change":
+        correct = any(label in text for label in g["labels"])
     elif tmpl == "close_call_formation":
         correct = bool(AMBIGUITY.search(text))
     elif tmpl == "line_height_half":
@@ -310,10 +324,14 @@ def score(q: dict, answer: dict, toolbox: Toolbox) -> dict:
         )
     elif tmpl == "top_passer_completion":
         pct = [v for v in _numbers(text) if 0 <= v <= 100]
-        share = 100 * g["completion"]
-        correct = g["player"] in text and any(
-            abs(v - share) <= g["tolerance_pct"] or abs(100 * v - share) <= g["tolerance_pct"]
-            for v in pct
+        correct = any(
+            acc["player"] in text
+            and any(
+                abs(v - 100 * acc["completion"]) <= g["tolerance_pct"]
+                or abs(100 * v - 100 * acc["completion"]) <= g["tolerance_pct"]
+                for v in pct
+            )
+            for acc in g["accepted"]
         )
     else:
         raise ValueError(f"no scorer for template {tmpl}")

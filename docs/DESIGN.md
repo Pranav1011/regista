@@ -241,3 +241,30 @@ use only data up to the current time. Thresholds must come from the design games
   first-half stoppage alert as "47:00". Game 3 and the SkillCorner matches were
   re-run once with the thresholds unchanged; the numbers above are from that
   re-run.
+
+## ADR-009: Agent model qwen3.5:9b, judge gemma4:12b, both local
+
+**Context.** The agent must run locally through Ollama on an 18 GB laptop (no
+paid API). Four tool-calling models were compared on the dev question bank
+(Metrica games 1-2, 38 template questions with answers computed from the store;
+`eval/agent/run.py`), with the same prompt, tools, temperature 0, and a
+16k-token context.
+
+**Decision.** Use **qwen3.5:9b** (thinking off) as the agent. On dev it tied
+gemma4:12b for the best accuracy (0.974) with perfect number grounding, citation
+validity, and abstention, and it was faster (latency p50 12.0 s, p95 18.7 s,
+against 15.4 s and 29.4 s). llama3.1:8b was fastest (p50 5.8 s) but less accurate
+(0.789); gpt-oss:20b does not fit the GPU alongside a 16k context on this machine
+(it spills to CPU; p95 48.6 s) and reached 0.895. The judge for written summaries
+is **gemma4:12b**, from a different model family than the agent, and the two are
+never loaded at the same time. Prompt, model, and judge are frozen in
+`eval/agent/frozen.json`; the test split runs once against that file.
+
+**Consequence.** Answers take about 12-19 s on a laptop, so the hosted demo shows
+pre-generated answers and free-form questions need `regista serve` locally. The
+dev set is small (38 questions, one wrong answer for the chosen model), so the
+dev accuracy is a coarse ranking signal, not a precise estimate. Prompts, tools,
+and scoring rules were refined on dev after reading dev answers (e.g. accepting
+both readings of an ambiguous question); the test split was not looked at. gpt-oss
+answers written with non-breaking hyphens failed the grounding check before the
+check normalised dashes; its stored dev grounding reflects that.
