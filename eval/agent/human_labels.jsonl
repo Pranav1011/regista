@@ -1,0 +1,38 @@
+{"split": "test", "kind": "false_premise", "id": "skillcorner/1886347:fp_no_back_line_change:22", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 1, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/1874553|qwen3.5:9b", "faithful": 5, "coverage": 4, "caveats": 3, "round": "human_unassisted", "index": 2, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/1959846|qwen3.5:9b", "faithful": 5, "coverage": 5, "caveats": 3, "round": "human_unassisted", "index": 3, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/1886347|qwen3.5:9b", "faithful": 3, "coverage": 4, "caveats": 3, "round": "human_unassisted", "index": 4, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/2011166|qwen3.5:9b", "faithful": 4, "coverage": 4, "caveats": 4, "round": "human_unassisted", "index": 5, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1886347:top_pass_pair:4", "correct": true, "round": "human_unassisted", "index": 6, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/2006229:formation_at_press_change:11", "correct": true, "round": "human_unassisted", "index": 7, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "metrica/3:fp_third_half:25", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 8, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/2013725|qwen3.5:9b", "faithful": 4, "coverage": 4, "caveats": 3, "round": "human_unassisted", "index": 9, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/2007721:fp_top_passer:25", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 10, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1925299:press_after:5", "correct": true, "round": "human_unassisted", "index": 11, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "metrica/3:fp_wrong_team:20", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 12, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1927964:first_back_line_change:8", "correct": true, "round": "human_unassisted", "index": 13, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/2016236|qwen3.5:9b", "faithful": 4, "coverage": 4, "caveats": 4, "round": "human_unassisted", "index": 14, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "metrica/3:fp_no_back_line_change:23", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 15, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/1899585:fp_press_harder:23", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 16, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/1899585|qwen3.5:9b", "faithful": 5, "coverage": 5, "caveats": 3, "round": "human_unassisted", "index": 17, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/1925299:fp_third_half:24", "rejects_premise": false, "with_evidence": true, "round": "human_unassisted", "index": 18, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/2006363|qwen3.5:9b", "faithful": 4, "coverage": 5, "caveats": 4, "round": "human_unassisted", "index": 19, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/2015213:fp_wrong_formation:18", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 20, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1886347:close_call_formation:17", "correct": true, "round": "human_unassisted", "index": 21, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/2010085|qwen3.5:9b", "faithful": 5, "coverage": 4, "caveats": 3, "round": "human_unassisted", "index": 22, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "metrica/3:fp_top_passer:24", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 23, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1874553:xg:10~p2", "correct": true, "round": "human_unassisted", "index": 24, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1996436:higher_line:7", "correct": true, "round": "human_unassisted", "index": 25, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/2007448:fp_extra_time:19", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 26, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/1886347:fp_third_half:24", "rejects_premise": false, "with_evidence": false, "round": "human_unassisted", "index": 27, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "metrica/3:fp_wrong_formation:22", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 28, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1886347:formation_at_press_change:9", "correct": false, "round": "human_unassisted", "index": 29, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "metrica/3:fp_back_five:19", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 30, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1996436:shot_quality:15", "correct": true, "round": "human_unassisted", "index": 31, "notes": ""}
+{"split": "test", "kind": "summary", "id": "skillcorner/2015213|qwen3.5:9b", "faithful": 4, "coverage": 5, "caveats": 3, "round": "human_unassisted", "index": 32, "notes": ""}
+{"split": "test", "kind": "answer", "id": "skillcorner/1996435:line_height_half:2", "correct": true, "round": "human_unassisted", "index": 33, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/2013725:fp_extra_time:21", "rejects_premise": false, "with_evidence": false, "round": "human_unassisted", "index": 34, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/1959846:fp_wrong_formation:21", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 35, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "metrica/3:fp_wrong_time:26", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 36, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "skillcorner/1953632:fp_back_five:20", "rejects_premise": true, "with_evidence": true, "round": "human_unassisted", "index": 37, "notes": ""}
+{"split": "test", "kind": "false_premise", "id": "metrica/3:fp_extra_time:21", "rejects_premise": false, "with_evidence": false, "round": "human_unassisted", "index": 38, "notes": ""}

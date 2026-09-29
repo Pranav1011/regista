@@ -9,11 +9,16 @@
     is the answer correct?, for rule-scorer-human agreement;
   - extra stratum: every false-premise answer on Metrica game 3 (on the test split
     the judge scored them 1.00 and the pattern rule 0.375), same two questions.
-Each label is appended to eval/agent/human_labels.jsonl as it is given; the model
-and the automatic verdict are hidden; already-labelled items are skipped, so you
-can stop and resume.
+Each label is appended to eval/agent/human_labels.jsonl as it is given, with its
+round, item number, and optional notes; the model and the automatic verdict are
+hidden; already-labelled items are skipped, so you can stop and resume.
+
+Rounds: "human_unassisted" (the first pass) and "human_reviewed" (revisions made
+after a rubric-consistency review, by item number, recording which items were
+discussed with Claude). Agreement is reported against both.
 
   uv run python eval/agent/label.py --split test
+  uv run python eval/agent/label.py --split test --revise 1 18 20 --discussed 1 18 20
 """
 
 from __future__ import annotations
@@ -131,27 +136,97 @@ def label(item: dict, toolbox: Toolbox) -> dict:
     return {"correct": ask("is the answer correct?", YES_NO)}
 
 
+ROUNDS = ("human_unassisted", "human_reviewed")
+
+
+def load_labels(round_: str = "human_unassisted") -> dict[tuple[str, str], dict]:
+    """Labels per (kind, id). ``human_reviewed`` is the unassisted labels with every later
+    revision applied; rows without a round are unassisted."""
+    out: dict[tuple[str, str], dict] = {}
+    if not LABELS.exists():
+        return out
+    for r in map(json.loads, LABELS.read_text().splitlines()):
+        rnd = r.get("round", "human_unassisted")
+        if rnd == "human_unassisted" or round_ == "human_reviewed":
+            out[(r["kind"], r["id"])] = r
+    return out
+
+
+def _write(row: dict) -> None:
+    with LABELS.open("a") as fh:
+        fh.write(json.dumps(row) + "\n")
+
+
+def _note() -> str:
+    return input("  notes (optional, Enter to skip): ").strip()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--split", default="test")
+    ap.add_argument(
+        "--revise",
+        type=int,
+        nargs="+",
+        metavar="N",
+        help="re-label items by their [N/total] number; stored as round human_reviewed",
+    )
+    ap.add_argument(
+        "--discussed",
+        type=int,
+        nargs="*",
+        default=[],
+        metavar="N",
+        help="item numbers discussed with Claude before revising (recorded on the revision)",
+    )
     args = ap.parse_args()
-    done = set()
-    if LABELS.exists():
-        done = {(r["kind"], r["id"]) for r in map(json.loads, LABELS.read_text().splitlines())}
     items = sample(args.split)
-    todo = [it for it in items if (it["kind"], it["id"]) not in done]
     toolbox = Toolbox(io.data_dir() / "store")
     print(RUBRIC.split("Answer only")[0])
     try:
-        for i, it in enumerate(todo, 1):
-            print("=" * 80)
-            print(f"[{len(items) - len(todo) + i}/{len(items)}] {it['kind']}")
-            scores = label(it, toolbox)
-            with LABELS.open("a") as fh:
-                fh.write(
-                    json.dumps({"split": args.split, "kind": it["kind"], "id": it["id"], **scores})
-                    + "\n"
+        if args.revise:
+            current = load_labels("human_reviewed")
+            for n in args.revise:
+                if not 1 <= n <= len(items):
+                    sys.exit(f"no item {n}; items are numbered 1-{len(items)}")
+                it = items[n - 1]
+                prev = current.get((it["kind"], it["id"]))
+                print("=" * 80)
+                print(f"[{n}/{len(items)}] {it['kind']} (revising)")
+                if prev:
+                    shown = {k: v for k, v in prev.items() if k not in ("split", "kind", "id")}
+                    print(f"CURRENT LABEL: {json.dumps(shown)}")
+                scores = label(it, toolbox)
+                _write(
+                    {
+                        "split": args.split,
+                        "kind": it["kind"],
+                        "id": it["id"],
+                        **scores,
+                        "round": "human_reviewed",
+                        "index": n,
+                        "notes": _note(),
+                        "discussed_with_claude": n in args.discussed,
+                    }
                 )
+            return
+        done = set(load_labels())
+        todo = [(n, it) for n, it in enumerate(items, 1) if (it["kind"], it["id"]) not in done]
+        for n, it in todo:
+            print("=" * 80)
+            print(f"[{n}/{len(items)}] {it['kind']}")
+            scores = label(it, toolbox)
+            _write(
+                {
+                    "split": args.split,
+                    "kind": it["kind"],
+                    "id": it["id"],
+                    **scores,
+                    "round": "human_unassisted",
+                    "index": n,
+                    "notes": _note(),
+                }
+            )
     except (KeyboardInterrupt, EOFError):
         print("\nstopped; labels so far are saved")
 
