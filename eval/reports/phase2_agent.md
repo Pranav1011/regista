@@ -221,6 +221,14 @@ Rubric scores 1-5 (faithful to the fact sheet, covers flagged moments, states ca
 
 Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00 of them (1 - position bias). Consistent wins: qwen3.5:9b 2.
 
+## Summaries judged by gemma4:12b (test)
+
+Rubric scores 1-5 (faithful to the fact sheet, covers flagged moments, states caveats); the judge is from a different model family than the agent.
+
+| model      |   faithful |   coverage |   caveats |
+|:-----------|-----------:|-----------:|----------:|
+| qwen3.5:9b |       4.86 |       4.95 |         5 |
+
 ## Limitations
 
 - Gold answers come from the same tools the agent calls, so this evaluation measures faithfulness to the tools (right tool, right reading, grounded numbers and times), not whether the tools are right; tool correctness is covered by the Phase 1 evaluations (`eval/reports/phase1.md`).
