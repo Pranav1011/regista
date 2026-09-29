@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -28,10 +29,11 @@ sys.path.insert(0, str(HERE))
 from _common import SKILLCORNER_MATCHES, TEST_GAME, TRAIN_GAMES  # noqa: E402
 from premise_judge import load as load_premise_judgments  # noqa: E402
 from premise_judge import verdict as premise_verdict  # noqa: E402
-from questions import generate  # noqa: E402
+from questions import PARAPHRASES, generate  # noqa: E402
 from scoring import score  # noqa: E402
 
 from regista import io  # noqa: E402
+from regista.agent.grounding import _CLOCK, _FORMATION, _ID_LIKE, _NUMBER, normalise  # noqa: E402
 from regista.agent.loop import SYSTEM_PROMPT, Agent, OllamaProvider  # noqa: E402
 from regista.agent.tools import Toolbox  # noqa: E402
 
@@ -279,6 +281,29 @@ def rescore(path: Path) -> None:
     path.write_text("".join(json.dumps(r, default=str) + "\n" for r in rows))
 
 
+_VALUE_TOKENS = [_CLOCK, _FORMATION, _ID_LIKE, _NUMBER]
+
+
+# a reported absence ("the tools show no detected press change moment") is a finding
+_ABSENCE = re.compile(
+    r"\bno (?:detected |such )?[\w-]+(?: [\w-]+){0,2} moments?\b|did not detect", re.I
+)
+
+
+def _states_a_value(answer: str, question: str) -> bool:
+    """True if the answer gives a finding: a number, clock, formation label, or id not in the
+    question, or a reported absence of detected moments. (The absence rule was added after
+    reading test answers; the report says so.)"""
+    answer, question = normalise(answer), normalise(question)
+    if _ABSENCE.search(answer):
+        return True
+    for pattern in _VALUE_TOKENS:
+        for m in pattern.finditer(answer):
+            if m.group(0).strip() not in question:
+                return True
+    return False
+
+
 def load(path: Path) -> pd.DataFrame:
     """One row per answer. False-premise items are scored by the LLM premise judge
     (primary) when its verdicts exist; ``premise_scorer`` records which scorer set
@@ -301,6 +326,13 @@ def load(path: Path) -> pd.DataFrame:
             {
                 **{f"q_{k}": v for k, v in r["question"].items()},
                 **s,
+                "base_category": r["question"]
+                .get("extra", {})
+                .get("base_category", r["question"]["category"]),
+                # strict decline: the decline pattern matches and no substantive answer is
+                # given (no number, clock, formation, or id beyond the question's own)
+                "declined_strict": s["abstained"]
+                and not _states_a_value(r["answer"]["answer_text"], r["question"]["question"]),
                 "latency_s": r["answer"]["latency_s"],
                 "status": r["answer"]["status"],
                 "retried": r["answer"]["retried"],
@@ -314,8 +346,10 @@ def load(path: Path) -> pd.DataFrame:
 
 
 def summarize(df: pd.DataFrame) -> dict:
-    answerable = df[df["q_category"] != "unanswerable"]
-    unanswerable = df[df["q_category"] == "unanswerable"]
+    # split on the base category, so reworded unanswerable questions (xg paraphrases)
+    # count as unanswerable
+    answerable = df[df["base_category"] != "unanswerable"]
+    unanswerable = df[df["base_category"] == "unanswerable"]
     per_cat = df.groupby("q_category").agg(
         questions=("correct", "size"),
         accuracy=("correct", "mean"),
@@ -331,6 +365,7 @@ def summarize(df: pd.DataFrame) -> dict:
         if len(unanswerable)
         else np.nan,
         "false_abstention": float(answerable["abstained"].mean()),
+        "false_abstention_strict": float(answerable["declined_strict"].mean()),
         "latency_p50": float(df["latency_s"].quantile(0.5)),
         "latency_p95": float(df["latency_s"].quantile(0.95)),
         "retried": float(df["retried"].mean()),
@@ -437,6 +472,75 @@ def paraphrase_spread(df: pd.DataFrame) -> pd.DataFrame:
     return table
 
 
+# where a paraphrase came from, for the weak-wording notes (variant index -> note)
+PARAPHRASE_NOTES = {
+    ("top_pass_pair", 0): "the original ambiguous wording, kept on purpose in question review",
+    ("top_pass_pair", 1): "added in question review (undirected wording)",
+    ("top_pass_pair", 2): "added in question review (undirected wording)",
+}
+WEAK_WORDING = 0.7
+
+
+def test_headline(df: pd.DataFrame) -> list[str]:
+    """SkillCorner with match-level CIs as the headline; Metrica game 3 as one match."""
+    lines = ["## Test results", ""]
+    src = df["q_match"].str.split("/").str[0]
+    sc = df[src == "skillcorner"]
+    if len(sc):
+        s = summarize(sc)
+        lines += [
+            f"### Headline: SkillCorner ({sc['q_match'].nunique()} matches, {len(sc)} questions)",
+            "",
+            "Accuracy per category with a 95% CI from resampling matches (not questions).",
+            "",
+            category_ci(sc).round(3).to_markdown(),
+            "",
+            f"Overall {s['overall_accuracy']:.3f}; matched expected tools "
+            f"{s['tool_selection']:.3f}; citation validity {s['citation_validity']:.3f}; "
+            f"number grounding {s['number_grounding']:.3f}; abstention accuracy "
+            f"{s['abstention_accuracy']:.3f}; declined answerable questions: "
+            f"{s['false_abstention']:.3f} by the decline pattern, "
+            f"{s['false_abstention_strict']:.3f} with no substantive answer; latency p50 "
+            f"{s['latency_p50']:.1f} s, p95 {s['latency_p95']:.1f} s.",
+            "",
+        ]
+    m3 = df[src == "metrica"]
+    if len(m3):
+        per = m3.groupby("q_category")["correct"].agg(questions="size", accuracy="mean")
+        lines += [
+            f"### Metrica game 3: a single-match observation ({len(m3)} questions)",
+            "",
+            "One match, so no confidence interval is given; read it as one observation.",
+            "",
+            per.round(3).to_markdown(),
+            "",
+        ]
+        a = premise_agreement(m3)
+        if a:
+            lines += [
+                f"On its {a['items']} false-premise items the judge scored "
+                f"{a['correct_judge_rate']:.2f} and the pattern rule "
+                f"{a['correct_pattern_rate']:.2f}; these items are hand-labelled as an extra "
+                "stratum in `eval/agent/label.py`.",
+                "",
+            ]
+    spread = paraphrase_spread(df)
+    if not spread.empty:
+        weak = [
+            (t, int(c.split()[-1]) - 1, v)
+            for t, row in spread.iterrows()
+            for c, v in row.items()
+            if c.startswith("rewording") and v < WEAK_WORDING
+        ]
+        if weak:
+            lines += [f"### Weakest test paraphrases (accuracy below {WEAK_WORDING})", ""]
+            for t, k, v in sorted(weak, key=lambda x: x[2]):
+                note = PARAPHRASE_NOTES.get((t, k), "written before question review")
+                lines.append(f'- `{t}` rewording {k + 1} ({v:.2f}): "{PARAPHRASES[t][k]}"; {note}.')
+            lines.append("")
+    return lines
+
+
 def write_report() -> Path:
     files = sorted([*RESULTS.glob("dev_*.jsonl"), *RESULTS.glob("test_*.jsonl")])
     if not files:
@@ -449,7 +553,13 @@ def write_report() -> Path:
         "Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once "
         "with the frozen prompt and model.",
         "",
+        '"Matched expected tools" is the share of answers whose tools include one of the '
+        "listed tool sets for the question; the lists are not every valid path, so it is "
+        "a lower bound on sensible tool use, not a tool-selection accuracy.",
+        "",
     ]
+    for tf in sorted(RESULTS.glob("test_*.jsonl")):
+        lines += test_headline(load(tf))
     rows = []
     for f in files:
         df = load(f)
@@ -460,11 +570,12 @@ def write_report() -> Path:
                 "model": df["model"].iat[0],
                 "questions": s["n"],
                 "accuracy": s["overall_accuracy"],
-                "tool selection": s["tool_selection"],
+                "matched expected tools": s["tool_selection"],
                 "citation validity": s["citation_validity"],
                 "number grounding": s["number_grounding"],
                 "abstention accuracy": s["abstention_accuracy"],
-                "false abstention": s["false_abstention"],
+                "declined (pattern)": s["false_abstention"],
+                "declined (no substantive answer)": s["false_abstention_strict"],
                 "latency p50 (s)": s["latency_p50"],
                 "latency p95 (s)": s["latency_p95"],
                 "false premise full correction": s["false_premise_full_correction"],
@@ -579,6 +690,14 @@ def write_report() -> Path:
         "measures faithfulness to the tools (right tool, right reading, grounded numbers "
         "and times), not whether the tools are right; tool correctness is covered by "
         "the Phase 1 evaluations (`eval/reports/phase1.md`).",
+        "- Grounding verifies values, not their meaning: a number is grounded if a tool "
+        "returned it, even when the answer describes it wrongly (e.g. back-line counts, "
+        "5 -> 3 defenders, described as line heights in metres).",
+        "- Declines are reported two ways: the decline pattern (which also matches premise "
+        'corrections and caveats such as "Regista does not model the reasons"), and '
+        '"no substantive answer" (the pattern matches and the answer gives no number, '
+        "clock, formation, or id beyond the question's, and reports no absence of detected "
+        "moments). The absence rule was added after reading test answers.",
         "- The false-premise judge is an LLM (gemma4:12b); its quote is verified to be "
         "in the answer, but whether that sentence rejects the premise is its judgment. "
         "Judge-human agreement comes from the 30 hand labels (`eval/agent/label.py`).",

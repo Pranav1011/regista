@@ -1,11 +1,14 @@
 """Hand-label a stratified sample so each automatic scorer's agreement with a human is measured.
 
-30 items, drawn with a fixed seed from one split's results:
-  - 10 false-premise answers: the same two questions the premise judge answers
-    (rejects the premise? with evidence?), for judge-human agreement;
+30 items drawn with a fixed seed from one split's results, plus an extra stratum:
+  - 10 false-premise answers (from matches other than the extra stratum's): the
+    same two questions the premise judge answers (rejects the premise? with
+    evidence?), for judge-human agreement;
   - 10 match summaries: the same 1-5 rubric the summary judge gives;
   - 10 answers from the remaining categories, spread across them round-robin:
-    is the answer correct?, for rule-scorer-human agreement.
+    is the answer correct?, for rule-scorer-human agreement;
+  - extra stratum: every false-premise answer on Metrica game 3 (on the test split
+    the judge scored them 1.00 and the pattern rule 0.375), same two questions.
 Each label is appended to eval/agent/human_labels.jsonl as it is given; the model
 and the automatic verdict are hidden; already-labelled items are skipped, so you
 can stop and resume.
@@ -35,6 +38,7 @@ from regista.agent.tools import Toolbox  # noqa: E402
 LABELS = HERE / "human_labels.jsonl"
 PER_STRATUM = 10
 SEED = 0
+EXTRA_PREMISE_MATCH = "metrica/3"  # every false-premise item here is labelled
 
 
 def _answers(split: str) -> list[dict]:
@@ -49,6 +53,8 @@ def sample(split: str) -> list[dict]:
     rng = random.Random(SEED)
     rows = _answers(split)
     premise = [r for r in rows if r["question"]["category"] == "false_premise"]
+    extra = [r for r in premise if r["question"]["match"] == EXTRA_PREMISE_MATCH]
+    premise = [r for r in premise if r["question"]["match"] != EXTRA_PREMISE_MATCH]
     rng.shuffle(premise)
     by_cat: dict[str, list[dict]] = {}
     for r in rows:
@@ -77,6 +83,7 @@ def sample(split: str) -> list[dict]:
         for s in summaries[:PER_STRATUM]
     ]
     items += [{"kind": "answer", "id": r["question"]["qid"], "row": r} for r in other]
+    items += [{"kind": "false_premise", "id": r["question"]["qid"], "row": r} for r in extra]
     rng.shuffle(items)
     return items
 
