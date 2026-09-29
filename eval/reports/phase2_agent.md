@@ -7,10 +7,11 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 | split   | model       |   questions |   accuracy |   tool selection |   citation validity |   number grounding |   abstention accuracy |   false abstention |   latency p50 (s) |   latency p95 (s) |   false premise full correction | false premise scorer   |
 |:--------|:------------|------------:|-----------:|-----------------:|--------------------:|-------------------:|----------------------:|-------------------:|------------------:|------------------:|--------------------------------:|:-----------------------|
-| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |            15.37  |            29.44  |                           nan   |                        |
-| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |            15.88  |            48.587 |                           nan   |                        |
-| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |             5.8   |            11.32  |                           nan   |                        |
-| dev     | qwen3.5:9b  |         124 |      0.968 |            0.947 |               1     |              1     |                   1   |              0.114 |             9.785 |            15.366 |                             0.5 | judge                  |
+| dev     | gemma4:12b  |          38 |      0.974 |            1     |               1     |              1     |                   1   |              0     |            15.37  |            29.44  |                          nan    |                        |
+| dev     | gpt-oss:20b |          38 |      0.921 |            1     |               1     |              0.789 |                   0.9 |              0     |            15.88  |            48.587 |                          nan    |                        |
+| dev     | llama3.1:8b |          38 |      0.789 |            1     |               0.929 |              0.921 |                   1   |              0     |             5.8   |            11.32  |                          nan    |                        |
+| dev     | qwen3.5:9b  |         124 |      0.968 |            0.947 |               1     |              1     |                   1   |              0.114 |             9.785 |            15.366 |                            0.5  | judge                  |
+| test    | qwen3.5:9b  |        1232 |      0.931 |            0.912 |               0.995 |              0.974 |                   1   |              0.114 |            10.645 |            17.202 |                            0.42 | judge                  |
 
 ## dev / gemma4:12b: accuracy per category
 
@@ -80,6 +81,68 @@ Without them (13 items): correct agreement 0.85, kappa 0.65.
 | top_pass_pair             |          1 |           0.5 |             1 |             1 |      0.5 |
 | top_passer_completion     |          1 |           1   |             1 |             1 |      0   |
 | xg                        |          1 |           1   |             1 |             1 |      0   |
+
+## test / qwen3.5:9b: accuracy per category
+
+| q_category    |   questions |   accuracy |   tool_selection |
+|:--------------|------------:|-----------:|-----------------:|
+| comparison    |          57 |      1     |            1     |
+| false_premise |         169 |      0.68  |            0.604 |
+| lookup        |         105 |      1     |            1     |
+| multi_step    |          41 |      0.951 |            0.951 |
+| paraphrase    |         660 |      0.958 |            0.955 |
+| reliability   |          63 |      0.984 |            1     |
+| temporal      |          32 |      1     |            1     |
+| unanswerable  |         105 |      1     |            1     |
+
+### metrica (1 matches), match-level bootstrap 95% CI
+
+| category      |   questions |   matches |   accuracy |   ci_low |   ci_high |
+|:--------------|------------:|----------:|-----------:|---------:|----------:|
+| comparison    |           3 |         1 |          1 |        1 |         1 |
+| false_premise |           8 |         1 |          1 |        1 |         1 |
+| lookup        |           5 |         1 |          1 |        1 |         1 |
+| multi_step    |           2 |         1 |          1 |        1 |         1 |
+| paraphrase    |          30 |         1 |          1 |        1 |         1 |
+| reliability   |           3 |         1 |          1 |        1 |         1 |
+| temporal      |           1 |         1 |          1 |        1 |         1 |
+| unanswerable  |           5 |         1 |          1 |        1 |         1 |
+
+### skillcorner (20 matches), match-level bootstrap 95% CI
+
+| category      |   questions |   matches |   accuracy |   ci_low |   ci_high |
+|:--------------|------------:|----------:|-----------:|---------:|----------:|
+| comparison    |          54 |        20 |      1     |    1     |     1     |
+| false_premise |         161 |        20 |      0.665 |    0.616 |     0.711 |
+| lookup        |         100 |        20 |      1     |    1     |     1     |
+| multi_step    |          39 |        20 |      0.949 |    0.872 |     1     |
+| paraphrase    |         630 |        20 |      0.956 |    0.945 |     0.966 |
+| reliability   |          60 |        20 |      0.983 |    0.95  |     1     |
+| temporal      |          31 |        19 |      1     |    1     |     1     |
+| unanswerable  |         100 |        20 |      1     |    1     |     1     |
+
+### False premise: LLM judge (primary) vs pattern rule (secondary)
+
+169 items. The judge claimed a rejection in 119; 2 of its quotes were not found in the answer and count as not rejected. Premise rejected: judge 0.69, pattern 0.59; agreement 0.88, Cohen's kappa 0.73. Correct (rejection and grounded): judge 0.68, pattern 0.58; agreement 0.88, kappa 0.74.
+
+The pattern rule's agreement is uninformative for templates whose fact to name is a team (fp_wrong_team, fp_press_harder, fp_higher_line): a team name appears in almost every answer.
+Without them (130 items): correct agreement 0.88, kappa 0.75.
+
+### Paraphrase robustness (accuracy per wording)
+
+| q_template                |   original |   rewording 1 |   rewording 2 |   rewording 3 |   spread |
+|:--------------------------|-----------:|--------------:|--------------:|--------------:|---------:|
+| close_call_formation      |       0.98 |          1    |          1    |          1    |     0.02 |
+| first_back_line_change    |       1    |          1    |          1    |          1    |     0    |
+| first_press_change        |       1    |          1    |          1    |          1    |     0    |
+| formation_at_press_change |       0.9  |          1    |          0.85 |          0.55 |     0.45 |
+| formation_window          |       1    |          1    |          0.95 |          1    |     0.05 |
+| higher_line               |       1    |          1    |          1    |          1    |     0    |
+| line_height_half          |       1    |          1    |          1    |          1    |     0    |
+| press_after               |       1    |          0.9  |          1    |          1    |     0.1  |
+| top_pass_pair             |       1    |          0.43 |          0.95 |          1    |     0.57 |
+| top_passer_completion     |       1    |          1    |          1    |          1    |     0    |
+| xg                        |       1    |          1    |          1    |          1    |     0    |
 
 ## Ten worst dev failures (all models)
 
