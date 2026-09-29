@@ -373,7 +373,9 @@ checked identical. The dev split was nevertheless re-run on the fixed code and
 re-frozen (fourth run; the third is archived), so the frozen code hash is
 backed by a dev run. No test answer existed at that point.
 
-**Agent v1.1: post-test bug fixes.** After the test run and the hand labels, four
+### Agent v1.1: post-test bug fixes
+
+After the test run and the hand labels, four
 bugs found by reading test output were fixed. The prompt, model, and loop are
 unchanged; `frozen.json` remains the record of the v1.0 test run, and
 `release_v1.1.json` pins the same model and prompt with the new code hash. The

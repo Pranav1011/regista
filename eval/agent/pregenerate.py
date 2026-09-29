@@ -32,8 +32,8 @@ SUGGESTED = (
     "Which team pressed more intensely in the second half?",
     "When did either team change its back line, according to the detectors?",
     "How high was each team's defensive line out of possession in the first half?",
-    "Which home player made the most passes, and how many did they complete?",
-    "Which away player made the most passes, and how many did they complete?",
+    "Which home player attempted the most passes, and how many did they complete?",
+    "Which away player attempted the most passes, and how many did they complete?",
     "What tactical moments did Regista detect after 60:00?",
     "In which third did the away team press most?",
     "What was the home team's formation in possession between 60:00 and 65:00?",
@@ -45,19 +45,39 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--game", type=int, action="append", required=True)
     ap.add_argument(
-        "--release", type=Path, default=FROZEN,
+        "--release",
+        type=Path,
+        default=FROZEN,
         help="frozen.json (v1.0) or a post-test release record such as release_v1.1.json",
+    )
+    ap.add_argument(
+        "--only", type=int, nargs="+", metavar="N",
+        help="regenerate only these suggested questions (1-based); keep the other answers",
     )  # fmt: skip
     args = ap.parse_args()
     frozen = check_frozen(args.release)
+    version = frozen.get("version", "v1.0")
     provider = OllamaProvider(frozen["model"], think=frozen.get("think"))
     agent = Agent(Toolbox(io.data_dir() / "store"), provider)
     ANSWERS.mkdir(exist_ok=True)
+    today = time.strftime("%Y-%m-%d")
     try:
         for game in args.game:
             match = f"metrica/{game}"
+            out = ANSWERS / f"metrica-{game}.json"
+            old = json.loads(out.read_text()) if out.exists() else {"items": []}
+            if args.only and len(old["items"]) != len(SUGGESTED):
+                sys.exit(f"{out.name} does not hold every suggested question; regenerate all")
             items = []
-            for q in SUGGESTED:
+            for n, q in enumerate(SUGGESTED, 1):
+                if args.only and n not in args.only:
+                    kept = old["items"][n - 1]
+                    base = {
+                        "agent_version": old.get("agent_version"),
+                        "generated": old.get("generated"),
+                    }
+                    items.append({**base, **kept})
+                    continue
                 a = agent.answer(q, match)
                 items.append(
                     {
@@ -66,16 +86,18 @@ def main() -> None:
                         "status": a.status,
                         "citations": a.citations,
                         "caveats": a.caveats,
+                        "agent_version": version,
+                        "generated": today,
                     }
                 )
                 print(f"{match} [{a.status}] {q}")
-            out = ANSWERS / f"metrica-{game}.json"
+            versions = {it["agent_version"] for it in items}
             out.write_text(
                 json.dumps(
                     {
                         "model": frozen["model"],
-                        "agent_version": frozen.get("version", "v1.0"),
-                        "generated": time.strftime("%Y-%m-%d"),
+                        "agent_version": versions.pop() if len(versions) == 1 else "mixed",
+                        "generated": max(it["generated"] for it in items),
                         "items": items,
                     },
                     indent=1,

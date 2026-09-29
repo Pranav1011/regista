@@ -567,6 +567,17 @@ def test_headline(df: pd.DataFrame) -> list[str]:
             per.round(3).to_markdown(),
             "",
         ]
+        _, affected = end_of_recording_items("test")
+        m3_items = [qid for qid, *_ in affected if qid.startswith("metrica/")]
+        if m3_items:
+            lines += [
+                f"{len(m3_items)} of these questions used golds built from the incomplete v1.0 "
+                "moment list (the 45+2:00 home press change was omitted; see the known issue "
+                "below): " + ", ".join(f"`{q}`" for q in m3_items) + ". They were scored "
+                "against what the tools returned, so the result measures faithfulness to the "
+                "v1.0 tools on this match.",
+                "",
+            ]
         a = premise_agreement(m3)
         if a:
             lines += [
@@ -591,6 +602,15 @@ def test_headline(df: pd.DataFrame) -> list[str]:
                 lines.append(f'- `{t}` rewording {k + 1} ({v:.2f}): "{PARAPHRASES[t][k]}"; {note}.')
             lines.append("")
     return lines
+
+
+# hand-labelled items whose gold is invalid against the match store
+INVALID_GOLDS = {
+    "skillcorner/1886347:fp_no_back_line_change:22": (
+        'the premise "the home team changed its back line" is true: a home back-line change '
+        "at 90+8:00 was hidden by the v1.0 find_moments bug, so the false-premise gold is invalid"
+    ),
+}
 
 
 def _kappa(a: list[bool], b: list[bool]) -> float:
@@ -627,11 +647,15 @@ def human_agreement(split: str, round_: str) -> dict[str, pd.DataFrame]:
         table = []
         extra = [lb for lb in fp if lb["id"].startswith(EXTRA_PREMISE_MATCH + ":")]
         rest = [lb for lb in fp if lb not in extra]
+        valid = [lb for lb in fp if lb["id"] not in INVALID_GOLDS]
         for name, sel in (
             ("all", fp),
+            ("all, excluding invalid golds", valid if len(valid) < len(fp) else []),
             (f"{EXTRA_PREMISE_MATCH} stratum", extra),
             ("other matches", rest),
-        ):
+            ("other matches, excluding invalid golds",
+             [lb for lb in rest if lb["id"] not in INVALID_GOLDS] if len(valid) < len(fp) else []),
+        ):  # fmt: skip
             if not sel:
                 continue
             human = [bool(lb["rejects_premise"] and lb["with_evidence"]) for lb in sel]
@@ -734,9 +758,9 @@ def direction_audit_section(split: str) -> list[str]:
     return lines
 
 
-def end_of_recording_section(split: str) -> list[str]:
-    """Moments emitted after a period's last recorded frame, which v1.0 find_moments omits,
-    and the test items whose gold they change."""
+def end_of_recording_items(split: str) -> tuple[list, list]:
+    """Moments emitted after a period's last recorded frame (omitted by v1.0 find_moments),
+    and the items whose gold they change: (dropped, [(qid, correct, labelled, reason)])."""
     toolbox = Toolbox(io.data_dir() / "store")
     dropped = []
     for match in SPLITS[split]:
@@ -746,7 +770,7 @@ def end_of_recording_section(split: str) -> list[str]:
             if r.emit_t > hi:
                 dropped.append((match, r.type, r.team, int(r.period), float(r.emit_t), hi))
     if not dropped:
-        return []
+        return [], []
     model = json.loads(FROZEN.read_text())["model"]
     rows = [json.loads(line) for line in results_path(split, model).read_text().splitlines()]
     from label import load_labels
@@ -782,6 +806,15 @@ def end_of_recording_section(split: str) -> list[str]:
                 reason = f"the premise is contradicted by the omitted {team} back-line change"
             if reason:
                 affected.append((q["qid"], r["score"]["correct"], q["qid"] in labelled, reason))
+    return dropped, affected
+
+
+def end_of_recording_section(split: str) -> list[str]:
+    """Moments emitted after a period's last recorded frame, which v1.0 find_moments omits,
+    and the test items whose gold they change."""
+    dropped, affected = end_of_recording_items(split)
+    if not dropped:
+        return []
     lines = [
         "## Known issue found after the test run: moments after the last recorded frame",
         "",
@@ -829,9 +862,14 @@ def human_agreement_section(split: str) -> list[str]:
         f"(after a rubric-consistency review; {len(revised)} revisions, "
         f"{sum(bool(r.get('discussed_with_claude')) for r in revised)} of them on items "
         "discussed with Claude). A false-premise item counts as rejected by the human when "
-        'it is labelled both "rejects the premise" and "with evidence".',
+        'it is labelled both "rejects the premise" and "with evidence". Reviewed-round '
+        "summary labels were given with the v1.1 fact sheet on screen, which adds the "
+        "tools' line-height and press comparisons; the judge graded against the v1.0 fact "
+        "sheet without them.",
         "",
     ]
+    for qid, why in INVALID_GOLDS.items():
+        lines += [f"Invalid gold: `{qid}`: {why}. Agreement is given with and without it.", ""]
     for round_, name in (("human_unassisted", "unassisted"), ("human_reviewed", "reviewed")):
         if round_ == "human_reviewed" and reviewed == unassisted:
             lines += ["### Reviewed round", "", "No revisions yet; identical to unassisted.", ""]

@@ -4,6 +4,8 @@
  "generated": "2026-09-29",
  "items": [
   {
+   "agent_version": "v1.1",
+   "generated": "2026-09-29",
    "question": "What formation did each team use without the ball, and how clear-cut was it?",
    "answer_text": "The home team most commonly used a 4-4-2 formation without the ball (65% share), while the away team most commonly used a 3-5-2 formation (60% share). For the home team, many windows were close calls with margins around 0.02\u20130.04, but later in the match it became clearer. The away team had several clear-cut moments, such as at 65:00 where the margin was 0.073, and at 85:00 where it was 0.097.",
    "status": "verified",
@@ -174,6 +176,8 @@
    ]
   },
   {
+   "agent_version": "v1.1",
+   "generated": "2026-09-29",
    "question": "Which team pressed more intensely in the second half?",
    "answer_text": "The home team pressed more intensely in the second half with a press intensity of 0.406 compared to the away team's 0.3268, a difference of 0.0792.",
    "status": "verified",
@@ -192,6 +196,8 @@
    ]
   },
   {
+   "agent_version": "v1.1",
+   "generated": "2026-09-29",
    "question": "When did either team change its back line, according to the detectors?",
    "answer_text": "The away team changed its back line at 13:00, 28:00, 45+1:00, and 76:00 in the match metrica/1.",
    "status": "verified",
@@ -250,6 +256,8 @@
    ]
   },
   {
+   "agent_version": "v1.1",
+   "generated": "2026-09-29",
    "question": "How high was each team's defensive line out of possession in the first half?",
    "answer_text": "In the first half out of possession, the home team's defensive line was at 34.25 metres and the away team's was at 34.28 metres; the away team's line was slightly higher by 0.03 metres.",
    "status": "verified",
@@ -268,8 +276,8 @@
    ]
   },
   {
-   "question": "Which home player made the most passes, and how many did they complete?",
-   "answer_text": "The home player who made the most passes was home_7 with 66 attempts and 51 completions.",
+   "question": "Which home player attempted the most passes, and how many did they complete?",
+   "answer_text": "The home player who attempted the most passes was home_7 with 66 attempts, completing 51 of them.",
    "status": "verified",
    "citations": [
     {
@@ -292,11 +300,13 @@
    "caveats": [
     "Passes are inferred from tracking (detector v2).",
     "Players are anonymised ids; names are not available."
-   ]
+   ],
+   "agent_version": "v1.1",
+   "generated": "2026-09-29"
   },
   {
-   "question": "Which away player made the most passes, and how many did they complete?",
-   "answer_text": "The away player who made the most passes was away_21 with 81 attempts, completing 65 of them.",
+   "question": "Which away player attempted the most passes, and how many did they complete?",
+   "answer_text": "The away player who attempted the most passes was away_21 with 81 attempts, completing 65 of them.",
    "status": "verified",
    "citations": [
     {
@@ -319,9 +329,13 @@
    "caveats": [
     "Passes are inferred from tracking (detector v2).",
     "Players are anonymised ids; names are not available."
-   ]
+   ],
+   "agent_version": "v1.1",
+   "generated": "2026-09-29"
   },
   {
+   "agent_version": "v1.1",
+   "generated": "2026-09-29",
    "question": "What tactical moments did Regista detect after 60:00?",
    "answer_text": "After 60:00, Regista detected two tactical moments for the away team: a back_line_change at 76:00 (reducing defenders in the back line from 5 to 3) and a press_change at 78:00 (decreasing press intensity from 0.6396 to 0.2755).",
    "status": "verified",
@@ -356,6 +370,8 @@
    ]
   },
   {
+   "agent_version": "v1.1",
+   "generated": "2026-09-29",
    "question": "In which third did the away team press most?",
    "answer_text": "The away team pressed most in the defensive third (press_intensity: 0.5278), followed by the middle third (0.4925) and attacking third (0.134).",
    "status": "verified",
@@ -382,6 +398,8 @@
    ]
   },
   {
+   "agent_version": "v1.1",
+   "generated": "2026-09-29",
    "question": "What was the home team's formation in possession between 60:00 and 65:00?",
    "answer_text": "The home team's formation in possession between 60:00 and 65:00 was a 4-2-3-1, which was the most common label with a share of 1.0 (100%). The margin for this formation was 0.0724 compared to the runner-up 4-1-4-1, and it was not considered a close call.",
    "status": "verified",
@@ -400,6 +418,8 @@
    ]
   },
   {
+   "agent_version": "v1.1",
+   "generated": "2026-09-29",
    "question": "What was the expected goals (xG) for each team?",
    "answer_text": "Expected goals (xG) is not modelled by Regista. I can provide information about formations, team shape, pressing intensity, pass counts, and tactical moments instead.",
    "status": "verified",

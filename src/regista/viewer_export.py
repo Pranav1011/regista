@@ -99,7 +99,15 @@ def export_match(
     (out / "frames.i16z").write_bytes(gzip.compress(blob, compresslevel=9))
 
     stream = store.table("stream_windows")
-    median_margin = float(stream["margin_out"].median())
+    # the close-call threshold comes from the agent's own tool, so the viewer, the tools
+    # and the agent share one definition: margin below this match's median margin
+    from regista.agent.tools import Toolbox
+
+    median_margin = (
+        Toolbox(store_path.parent.parent)
+        .get_formation(f"{store.source}/{store.match_id}", "home", "out")
+        .match_median_margin
+    )
     cards = []
     for r in stream.itertuples():
         card = {
