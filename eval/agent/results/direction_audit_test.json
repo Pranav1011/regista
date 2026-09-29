@@ -1,0 +1,1350 @@
+{
+ "summary": {
+  "answer": {
+   "claims": 172,
+   "checked": 135,
+   "errors": 7,
+   "error_rate": 0.05185185185185185,
+   "texts_with_error": 6
+  },
+  "summary": {
+   "claims": 18,
+   "checked": 17,
+   "errors": 9,
+   "error_rate": 0.5294117647058824,
+   "texts_with_error": 9
+  }
+ },
+ "rows": [
+  {
+   "source": "answer",
+   "id": "metrica/3:higher_line:7",
+   "verdict": "ok",
+   "detail": "home 'higher': home 35.0 m vs away 30.9 m",
+   "sentence": "The home team held a higher defensive line out of possession in the second half at 35.0 m compared to the away team's 30.9 m (difference: 4.2 m)."
+  },
+  {
+   "source": "answer",
+   "id": "metrica/3:fp_extra_time:21",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "Without a specific tactical moment recorded, I cannot explain why they dropped deep."
+  },
+  {
+   "source": "answer",
+   "id": "metrica/3:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 35.0 m vs away 30.9 m",
+   "sentence": "In the second half out of possession, the home team defended with a higher line (35.0 m) compared to the away team (30.9 m), with a difference of 4.2 m."
+  },
+  {
+   "source": "answer",
+   "id": "metrica/3:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 35.0 m vs away 30.9 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 35.0 m compared to the away team's 30.9 m (a difference of 4.2 m)."
+  },
+  {
+   "source": "answer",
+   "id": "metrica/3:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 35.0 m vs away 30.9 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the second half, with a line height of 35.0 m compared to the away side's 30.9 m (a difference of 4.2 m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1874553:higher_line:6",
+   "verdict": "ok",
+   "detail": "away 'higher': away 41.52 m vs home 33.25 m",
+   "sentence": "The away team held a higher defensive line out of possession in the second half (41.52m) compared to the home team (33.25m), with a difference of 8.27m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1874553:fp_extra_time:20",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The tools do not provide specific reasons for why the home team dropped deep; this information is not available through the Regista system."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1874553:fp_third_half:24",
+   "verdict": "ok",
+   "detail": "'dropped': from 40.5 to 17.62",
+   "sentence": "In the third half, the away team made two line height shifts: first at 51:00 (starting around 46:30), where their deepest outfield player moved from 27.02 to 46.655 metres, and second at 70:00 (starting around 65:30), where it dropped from 40.5 to 17.62 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1874553:line_height_half:2~p1",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the away team's line, which was at 32.42 metres (a difference of 0.97 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1874553:higher_line:6~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 41.52 m vs home 33.25 m",
+   "sentence": "In the second half out of possession, the away team defended with a higher line (41.52m) compared to the home team (33.25m), with a difference of 8.27m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1874553:higher_line:6~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 41.52 m vs home 33.25 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 41.52 metres compared to the home team's 33.25 metres (a difference of 8.27 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1874553:higher_line:6~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 41.52 m vs home 33.25 m",
+   "sentence": "The away side pushed its defensive line further up without the ball in the second half, with a line height of 41.52 metres compared to the home side's 33.25 metres (a difference of 8.27 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1886347:higher_line:6",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.97 m vs away 32.64 m",
+   "sentence": "The home team held a higher defensive line out of possession in the first half, with a line height of 43.97 metres compared to the away team's 32.64 metres (a difference of 11.33 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1886347:fp_extra_time:19",
+   "verdict": "ok",
+   "detail": "'dropped deep': from 55.97 to 29.02",
+   "sentence": "The home team dropped deep at the start of extra time (around 49:30 in period 2, which corresponds to the first period of extra time) with a line height shift from 55.97m to 29.02m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1886347:fp_higher_line:21",
+   "verdict": "ok",
+   "detail": "home 'higher': home 38.7 m vs away 26.1 m",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line (38.7 m) than the away team (26.1 m) in the first half, with a difference of 12.6 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1886347:higher_line:6~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.97 m vs away 32.64 m",
+   "sentence": "In the first half out of possession, the home team defended with a higher line (43.97m) compared to the away team (32.64m), with a difference of 11.33m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1886347:higher_line:6~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.97 m vs away 32.64 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 43.97 metres compared to the away team's 32.64 metres (a difference of 11.33 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1886347:higher_line:6~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 43.97 m vs away 32.64 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the first half, with a line height of 43.97 metres compared to the away side's 32.64 metres (a difference of 11.33 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1899585:higher_line:7",
+   "verdict": "ok",
+   "detail": "home 'higher': home 40.1 m vs away 25.3 m",
+   "sentence": "The home team held a higher defensive line out of possession in the first half, with a line height of 40.1 m compared to the away team's 25.3 m (a difference of 14.8 m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1899585:fp_extra_time:21",
+   "verdict": "error",
+   "detail": "'dropped deep': from 39.0 to 56.0",
+   "sentence": "The home team dropped deep (line height shifted from ~39m to ~56m) at 57:00 in the first period of extra time, with a severity of 1.185."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1899585:fp_higher_line:24",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.9 m vs away 30.2 m",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line (43.9 m) than the away team (30.2 m) in the first half, with a difference of 13.7 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1899585:fp_third_half:26",
+   "verdict": "ok",
+   "detail": "'raised': from 22.18 to 40.82",
+   "sentence": "In the third half, the away team made three tactical changes: at 55:00 they shifted their line height down (from 29.47m to 12.32m), at 64:00 they raised it back up (from 22.18m to 40.82m), and at 75:00 they increased their press intensity (from 0.338 to 0.708)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1899585:fp_third_half:26",
+   "verdict": "ok",
+   "detail": "'increased': from 22.18 to 40.82",
+   "sentence": "In the third half, the away team made three tactical changes: at 55:00 they shifted their line height down (from 29.47m to 12.32m), at 64:00 they raised it back up (from 22.18m to 40.82m), and at 75:00 they increased their press intensity (from 0.338 to 0.708)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1899585:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 40.1 m vs away 25.3 m",
+   "sentence": "In the first half out of possession, the home team defended with a higher line (40.1 m) compared to the away team (25.3 m), with a difference of 14.8 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1899585:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 40.1 m vs away 25.3 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 40.1 metres compared to the away team's 25.3 metres (a difference of 14.8 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1899585:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 40.1 m vs away 25.3 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the first half, with a line height of 40.1 m compared to the away side's 25.3 m (a difference of 14.8 m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:higher_line:6",
+   "verdict": "ok",
+   "detail": "home 'higher': home 45.12 m vs away 27.545 m",
+   "sentence": "The home team held a higher defensive line out of possession in the second half at 45.12 metres, compared to the away team's 27.545 metres (a difference of 17.575 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:fp_extra_time:19",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The home team dropped deep in the first period of extra time (period 3) because there was no detected line_height_shift moment for that period-the match only has two periods, so \"first period of extra time\" would be period 2."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:fp_extra_time:19",
+   "verdict": "ok",
+   "detail": "'increased': from 44.1 to 62.75",
+   "sentence": "The last line_height_shift for the home team occurred at 90+1:00, where their line height increased from 44.1 to 62.75 metres (dropping deep)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:fp_higher_line:21",
+   "verdict": "ok",
+   "detail": "home 'higher': home 35.95 m vs away 28.59 m",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line (35.95m) than the away team (28.59m) in the first half, with a difference of 7.36m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:fp_higher_line:21",
+   "verdict": "unchecked",
+   "detail": "'lower': no nearby from-to or team values",
+   "sentence": "The away team's line was lower, not higher."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:fp_higher_line:21",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "The away team's line was lower, not higher."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:line_height_half:2~p1",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the away team's line, which was at 32.52 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:line_height_half:2~p2",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the away team's line height of 32.52 metres, with a difference of 7.65 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:higher_line:6~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 45.12 m vs away 27.545 m",
+   "sentence": "In the second half out of possession, the home team defended with a higher line (45.12m) compared to the away team (27.545m), with a difference of 17.575m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:higher_line:6~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 45.12 m vs away 27.545 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 45.12 metres compared to the away team's 27.545 metres (a difference of 17.575 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1925299:higher_line:6~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 45.12 m vs away 27.545 m",
+   "sentence": "The home team pushed its defensive line further up without the ball in the second half, with a line height of 45.12 metres compared to the away team's 27.545 metres (a difference of 17.575 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:line_height_half:2",
+   "verdict": "ok",
+   "detail": "home 'lower': home 36.04 m vs away 39.42 m",
+   "sentence": "The home team's defensive line height out of possession in the first half was 36.04 metres, which is lower than the away team's 39.42 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:line_height_half:3",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.4 m vs home 36.0 m",
+   "sentence": "The away team's defensive line height out of possession in the first half was 39.4 meters, which was higher than the home team's 36.0 meters by a difference of 3.4 meters."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:higher_line:7",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.415 m vs home 36.035 m",
+   "sentence": "The away team held a higher defensive line out of possession in the first half, with a line height of 39.415 metres compared to the home team's 36.035 metres (a difference of 3.38 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:fp_extra_time:20",
+   "verdict": "ok",
+   "detail": "'dropped deep': from 43.92 to 22.125",
+   "sentence": "The home team dropped deep in the first period at 29:00, with their line height shifting from 43.92m to 22.125m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:fp_higher_line:23",
+   "verdict": "ok",
+   "detail": "'dropped': from 43.92 to 22.125",
+   "sentence": "The home team's defensive line dropped from 43.92m to 22.125m around the 29:00 mark, while the away team shifted from 47.34m to 26.215m at 34:00."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:fp_higher_line:23",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "Both teams adjusted their line heights during the first half, with the home team starting higher before lowering it later in the period."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:fp_third_half:26",
+   "verdict": "ok",
+   "detail": "'increased': from 0.2774 to 0.6013",
+   "sentence": "In the third half, the away team made two tactical changes: at approximately 51:00 they increased their press intensity (from 0.2774 to 0.6013), and near the end of the match around 89:00 they shifted their line height from 41.215 to 16.27 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.415 m vs home 36.035 m",
+   "sentence": "In the first half out of possession, the away team defended with a higher line (39.415m) compared to the home team (36.035m), with a difference of 3.38m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.415 m vs home 36.035 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 39.415 metres compared to the home team's 36.035 metres (a difference of 3.38 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1927964:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 39.415 m vs home 36.035 m",
+   "sentence": "The away team pushed its defensive line further up without the ball in the first half, with a line height of 39.415 metres compared to the home team's 36.035 metres (a difference of 3.38 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:line_height_half:3",
+   "verdict": "ok",
+   "detail": "away 'higher': away 46.4 m vs home 31.6 m",
+   "sentence": "The away team's defensive line height out of possession in the first half was 46.4 meters, which was higher than the home team's 31.6 meters by a difference of 14.8 meters."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:higher_line:7",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.61 m vs home 30.775 m",
+   "sentence": "The away team held a higher defensive line out of possession in the second half, with a line height of 39.61 metres compared to the home team's 30.775 metres (a difference of 8.835 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:fp_extra_time:21",
+   "verdict": "ok",
+   "detail": "'dropped deep': from 36.51 to 15.91",
+   "sentence": "The home team dropped deep at 87:30 in the first period of extra time, with a line height shift severity of 1.471, dropping from 36.51 to 15.91 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:fp_higher_line:24",
+   "verdict": "ok",
+   "detail": "'increased': from 19.78 to 48.7",
+   "sentence": "The away team's line height increased from 19.78 to 48.7 metres at 07:00, then decreased multiple times later."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:fp_higher_line:24",
+   "verdict": "error",
+   "detail": "'decreased': from 19.78 to 48.7",
+   "sentence": "The away team's line height increased from 19.78 to 48.7 metres at 07:00, then decreased multiple times later."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:fp_higher_line:24",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "Since the tools don't provide data on why the home team held a higher defensive line, and no causal detectors identified such moments for the home team, this specific reason is not available in the model's data."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.61 m vs home 30.775 m",
+   "sentence": "In the second half out of possession, the away team defended with a higher line (39.61 m) compared to the home team (30.775 m), with a difference of 8.835 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.61 m vs home 30.775 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 39.61 metres compared to the home team's 30.775 metres (a difference of 8.835 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1953632:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 39.61 m vs home 30.775 m",
+   "sentence": "The away team pushed its defensive line further up without the ball in the second half, with a line height of 39.61 metres compared to the home team's 30.775 metres (a difference of 8.835 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1959846:higher_line:6",
+   "verdict": "ok",
+   "detail": "home 'higher': home 40.14 m vs away 38.89 m",
+   "sentence": "The home team held a higher defensive line out of possession in the first half, with a line height of 40.14 metres compared to the away team's 38.89 metres (a difference of 1.25 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1959846:fp_extra_time:20",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The home team dropped deep in the first period of extra time (period=2) at 54:30, with a severity of 1.523, dropping from a line height of 38.4835m to 17.1566m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1959846:fp_third_half:24",
+   "verdict": "ok",
+   "detail": "'increased': from 0.245 to 0.613",
+   "sentence": "They also increased their pressing intensity at 55:00 from 0.245 to 0.613 and lowered their line height a third time at 74:00 from 50.34m to 33.67m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1959846:higher_line:6~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 40.14 m vs away 38.89 m",
+   "sentence": "In the first half, the home team defended with a higher line out of possession (40.14 m) compared to the away team (38.89 m), with a difference of 1.25 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1959846:higher_line:6~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 40.14 m vs away 38.89 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 40.14 metres compared to the away team's 38.89 metres (a difference of 1.25 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1959846:higher_line:6~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 40.14 m vs away 38.89 m",
+   "sentence": "The home team pushed its defensive line further up without the ball in the first half, with a line height of 40.14 metres compared to the away team's 38.89 metres (a difference of 1.25 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:higher_line:7",
+   "verdict": "ok",
+   "detail": "away 'higher': away 44.11 m vs home 22.275 m",
+   "sentence": "The away team held a higher defensive line out of possession in the second half (44.11m) compared to the home team (22.275m), with a difference of 21.835m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:fp_extra_time:20",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The home team dropped deep in the first period of extra time (period=2) starting around 80:30, with a line height shift detected at 85:00."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:fp_extra_time:20",
+   "verdict": "ok",
+   "detail": "'increased': from 22.57 to 44.04",
+   "sentence": "Their line height increased from 22.57 to 44.04 metres, indicating they dropped deeper into their own half."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:fp_extra_time:20",
+   "verdict": "error",
+   "detail": "'dropped deeper': from 22.57 to 44.04",
+   "sentence": "Their line height increased from 22.57 to 44.04 metres, indicating they dropped deeper into their own half."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:fp_higher_line:23",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "The home team did not hold a higher defensive line than the away team in the first half."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:fp_higher_line:23",
+   "verdict": "ok",
+   "detail": "'raised': from 38.06 to 53.49",
+   "sentence": "In fact, the away team had a line height shift at 45+0:00, moving from 38.06m to 53.49m (a severity of 1.102), meaning the away team raised their defensive line near halftime while the home team's line remained lower."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:fp_higher_line:23",
+   "verdict": "unchecked",
+   "detail": "'lower': no nearby from-to or team values",
+   "sentence": "In fact, the away team had a line height shift at 45+0:00, moving from 38.06m to 53.49m (a severity of 1.102), meaning the away team raised their defensive line near halftime while the home team's line remained lower."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:fp_third_half:26",
+   "verdict": "ok",
+   "detail": "'increased': from 0.4292 to 0.7225",
+   "sentence": "In the third half, the away team made two tactical changes: at 68:00 they increased their press intensity (from 0.4292 to 0.7225), and at 79:00 they shifted their line height from 53.02m to 37.16m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:line_height_half:2~p2",
+   "verdict": "ok",
+   "detail": "away 'higher': away 44.83 m vs home 23.85 m",
+   "sentence": "The away team's out-of-possession line height for the first half was 44.83 metres, which was higher than the home team's 23.85 metres by a difference of 20.98 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 44.11 m vs home 22.275 m",
+   "sentence": "In the second half out of possession, the away team defended with a higher line (44.11m) compared to the home team (22.275m), with a difference of 21.835m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 44.11 m vs home 22.275 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 44.11 metres compared to the home team's 22.275 metres (a difference of 21.835 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1986691:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 44.11 m vs home 22.275 m",
+   "sentence": "The away team pushed its defensive line further up without the ball in the second half, with a line height of 44.11 metres compared to the home team's 22.275 metres (a difference of 21.835 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996435:higher_line:7",
+   "verdict": "ok",
+   "detail": "home 'higher': home 44.045 m vs away 32.16 m",
+   "sentence": "The home team held a higher defensive line out of possession in the first half, with a line height of 44.045 metres compared to the away team's 32.16 metres (a difference of 11.885 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996435:fp_extra_time:21",
+   "verdict": "ok",
+   "detail": "'dropped deep': from 52.65 to 34.37",
+   "sentence": "The home team dropped deep in the first period of extra time (period=2) at 67:00, with their line height shifting from 52.65m to 34.37m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996435:fp_higher_line:24",
+   "verdict": "ok",
+   "detail": "home 'higher': home 38.96 m vs away 25.58 m",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line (38.96 m) than the away team (25.58 m) in the first half, with a difference of 13.38 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996435:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 44.045 m vs away 32.16 m",
+   "sentence": "In the first half out of possession, the home team defended with a higher line (44.045m) compared to the away team (32.16m), with a difference of 11.885m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996435:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 44.045 m vs away 32.16 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 44.045 metres compared to the away team's 32.16 metres (a difference of 11.885 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996435:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 44.045 m vs away 32.16 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the first half, with a line height of 44.045 metres compared to the away side's 32.16 metres (a difference of 11.885 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:line_height_half:2",
+   "verdict": "ok",
+   "detail": "away 'higher': away 35.75 m vs home 35.64 m",
+   "sentence": "The home team's defensive line height out of possession in the second half was 35.64 metres (the away team was slightly higher at 35.75 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:higher_line:7",
+   "verdict": "ok",
+   "detail": "home 'higher': home 41.94 m vs away 28.83 m",
+   "sentence": "The home team held a higher defensive line out of possession in the first half, with a line height of 41.94 metres compared to the away team's 28.83 metres (a difference of 13.11 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:fp_extra_time:19",
+   "verdict": "ok",
+   "detail": "'dropped deep': from 42.1 to 25.5",
+   "sentence": "The home team dropped deep (line height shifted from 42.1m to 25.5m) at approximately 68:30 in the first period of extra time, with a severity of 1.182."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:fp_higher_line:21",
+   "verdict": "ok",
+   "detail": "home 'higher': home 39.88 m vs away 30.97 m",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line (39.88m) than the away team (30.97m) in the first half, with a difference of 8.91m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:fp_third_half:24",
+   "verdict": "error",
+   "detail": "'dropping deeper': from 27.618 to 43.3731",
+   "sentence": "The away team made two line height shifts in the third half: at 72:00, their deepest outfield player moved from 27.618m to 43.3731m (dropping deeper), and at 82:00, they shifted from 42.1413m back up to 20.8889m (getting higher)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:fp_third_half:24",
+   "verdict": "error",
+   "detail": "'higher': from 42.1413 to 20.8889",
+   "sentence": "The away team made two line height shifts in the third half: at 72:00, their deepest outfield player moved from 27.618m to 43.3731m (dropping deeper), and at 82:00, they shifted from 42.1413m back up to 20.8889m (getting higher)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:line_height_half:2~p2",
+   "verdict": "ok",
+   "detail": "away 'higher': away 35.75 m vs home 35.64 m",
+   "sentence": "The home team's out-of-possession line height for the second half was 35.64 metres, while the away team had a slightly higher value of 35.75 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 41.9 m vs away 28.8 m",
+   "sentence": "In the first half out of possession, the home team defended with a higher line (41.9 m) compared to the away team (28.8 m), with a difference of 13.1 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 41.94 m vs away 28.83 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 41.94 metres compared to the away team's 28.83 metres (a difference of 13.11 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/1996436:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 41.94 m vs away 28.83 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the first half, with a line height of 41.94 metres compared to the away side's 28.83 metres (a difference of 13.11 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006229:higher_line:7",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.28 m vs away 35.13 m",
+   "sentence": "The home team held a higher defensive line out of possession in the second half at 43.28 metres, compared to the away team's 35.13 metres (a difference of 8.15 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006229:fp_extra_time:21",
+   "verdict": "ok",
+   "detail": "'dropped deep': from 43.48 to 20.61",
+   "sentence": "The home team dropped deep in the first period of extra time (period 2) at clock 53:00, with their line height shifting from 43.48m to 20.61m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006229:fp_higher_line:24",
+   "verdict": "ok",
+   "detail": "home 'higher': home 41.0 m vs away 25.1 m",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line (41.0 m) than the away team (25.1 m) in the first half, with a difference of 15.9 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006229:line_height_half:2~p1",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the away team's line, which was at 35.13 metres (a difference of 8.15 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006229:line_height_half:2~p2",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.28 m vs away 35.13 m",
+   "sentence": "The home team's out-of-possession line height for the second half was 43.28 metres, which was higher than the away team's 35.13 metres by a difference of 8.15 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006229:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.28 m vs away 35.13 m",
+   "sentence": "In the second half out of possession, the home team defended with a higher line (43.28m) compared to the away team (35.13m), with a difference of 8.15m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006229:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.28 m vs away 35.13 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 43.28 metres compared to the away team's 35.13 metres (a difference of 8.15 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006229:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 43.28 m vs away 35.13 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the second half, with a line height of 43.28 metres compared to the away side's 35.13 metres (a difference of 8.15 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006363:higher_line:7",
+   "verdict": "ok",
+   "detail": "home 'higher': home 45.47 m vs away 28.05 m",
+   "sentence": "The home team held a higher defensive line out of possession in the first half, with a line height of 45.47 metres compared to the away team's 28.05 metres (a difference of 17.42 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006363:fp_extra_time:20",
+   "verdict": "ok",
+   "detail": "'dropped deep': from 50.2 to 19.5",
+   "sentence": "The home team dropped deep in the first period of extra time (period=2) at approximately 51:00, with their line height shifting from 50.2m to 19.5m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006363:fp_higher_line:22",
+   "verdict": "ok",
+   "detail": "home 'higher': home 44.3 m vs away 23.1 m",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line (44.3 m) than the away team (23.1 m) in the first half, with a difference of 21.2 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006363:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 45.47 m vs away 28.05 m",
+   "sentence": "In the first half out of possession, the home team defended with a higher line (45.47 m) compared to the away team (28.05 m), with a difference of 17.42 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006363:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 45.47 m vs away 28.05 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 45.47 metres compared to the away team's 28.05 metres (a difference of 17.42 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2006363:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 45.47 m vs away 28.05 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the first half, with a line height of 45.47 metres compared to the away side's 28.05 metres (a difference of 17.42 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:higher_line:6",
+   "verdict": "ok",
+   "detail": "away 'higher': away 35.7 m vs home 31.3 m",
+   "sentence": "The away team held a higher defensive line out of possession in the first half, with a line height of 35.7m compared to the home team's 31.3m (a difference of 4.4m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:fp_extra_time:19",
+   "verdict": "error",
+   "detail": "'dropped deep': from 6.01 to 45.9",
+   "sentence": "The home team dropped deep in the first period of extra time (period 2) at 64:00, when their line height shifted from 6.01m to 45.9m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:fp_higher_line:22",
+   "verdict": "ok",
+   "detail": "'dropped': from 39.6 to 16.84",
+   "sentence": "The home team's defensive line dropped significantly at 13:00 (from 39.6m to 16.84m), while the away team's line rose later at 33:00 (from 24.65m to 45.79m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:fp_higher_line:22",
+   "verdict": "ok",
+   "detail": "'rose': from 24.65 to 45.79",
+   "sentence": "The home team's defensive line dropped significantly at 13:00 (from 39.6m to 16.84m), while the away team's line rose later at 33:00 (from 24.65m to 45.79m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:fp_higher_line:22",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "The home team held a higher defensive line initially but adjusted downward early in the first half, whereas the away team maintained a lower line until late in the period when they shifted upward."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:fp_higher_line:22",
+   "verdict": "unchecked",
+   "detail": "'lower': no nearby from-to or team values",
+   "sentence": "The home team held a higher defensive line initially but adjusted downward early in the first half, whereas the away team maintained a lower line until late in the period when they shifted upward."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:higher_line:6~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 35.675 m vs home 31.265 m",
+   "sentence": "In the first half out of possession, the away team defended with a higher line (35.675m) compared to the home team (31.265m), with a difference of 4.41m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:higher_line:6~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 35.7 m vs home 31.3 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 35.7 metres compared to the home team's 31.3 metres (a difference of 4.4 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007448:higher_line:6~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 35.7 m vs home 31.3 m",
+   "sentence": "The away team pushed its defensive line further up without the ball in the first half, with a line height of 35.7 metres compared to the home team's 31.3 metres (a difference of 4.4 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007721:higher_line:7",
+   "verdict": "ok",
+   "detail": "home 'higher': home 38.5 m vs away 34.1 m",
+   "sentence": "The home team held a higher defensive line out of possession in the first half, with a line height of 38.5 meters compared to the away team's 34.1 meters (a difference of 4.4 meters)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007721:fp_extra_time:21",
+   "verdict": "ok",
+   "detail": "'increased': from 27.06 to 51.22",
+   "sentence": "The only line_height_shift moment was in period 1 at 21:00, where the home team's line height increased from 27.06 to 51.22 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007721:fp_extra_time:21",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "This suggests the home team actually dropped deep earlier in the match, not in extra time."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007721:fp_higher_line:24",
+   "verdict": "ok",
+   "detail": "home 'higher': home 36.19 m vs away 35.32 m",
+   "sentence": "The premise is not supported: the home team actually held a higher defensive line (36.19 m) than the away team (35.32 m) in the first half, with a difference of 0.88 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007721:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 38.5 m vs away 34.1 m",
+   "sentence": "In the first half, the home team defended with a higher line out of possession (38.5 m) compared to the away team (34.1 m), with a difference of 4.4 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007721:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 38.5 m vs away 34.1 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 38.5 metres compared to the away team's 34.1 metres (a difference of 4.4 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2007721:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 38.5 m vs away 34.1 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the first half, with a line height of 38.5 metres compared to the away side's 34.1 metres (a difference of 4.4 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2010085:higher_line:6",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.6 m vs away 32.1 m",
+   "sentence": "The home team held a higher defensive line out of possession in the first half, with a line height of 43.6 meters compared to the away team's 32.1 meters (a difference of 11.5 meters)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2010085:fp_extra_time:20",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The home team dropped deep in the first period of extra time (period 2) at 80:00, with a severity of 1.183, shifting from a line height of 51.33 metres to 34.77 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2010085:fp_higher_line:23",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line than the away team in the first half."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2010085:line_height_half:2~p1",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the away team's line height of 30.8 metres, with a difference of 10.3 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2010085:higher_line:6~p0",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.6 m vs away 32.1 m",
+   "sentence": "In the first half, the home team defended with a higher line out of possession (43.6 m) compared to the away team (32.1 m), with a difference of 11.5 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2010085:higher_line:6~p1",
+   "verdict": "ok",
+   "detail": "home 'higher': home 43.6 m vs away 32.1 m",
+   "sentence": "The home team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 43.6 meters compared to the away team's 32.1 meters (a difference of 11.5 meters)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2010085:higher_line:6~p2",
+   "verdict": "ok",
+   "detail": "home 'further up': home 43.6 m vs away 32.1 m",
+   "sentence": "The home side pushed its defensive line further up without the ball in the first half, with a line height of 43.6 meters compared to the away side's 32.1 meters (a difference of 11.5 meters)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2011166:higher_line:7",
+   "verdict": "ok",
+   "detail": "away 'higher': away 38.55 m vs home 33.145 m",
+   "sentence": "The away team held a higher defensive line out of possession in the second half (38.55m) compared to the home team (33.145m), with a difference of 5.405m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2011166:fp_extra_time:20",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The home team dropped deep in the first period of extra time (period 2) at clock 83:00, with a severity of 1.596, shifting from a line height of 31.85 to 54.19 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2011166:fp_higher_line:23",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "The home team held a higher defensive line than the away team in the first half because of tactical shifts detected at 19:00 and 45+1:00, where the home team raised its line from 37.41m to 20.02m (at 19:00) and then from 18.795m to 46.31m (at 45+1:00), while the away team lowered its line at those times."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2011166:fp_higher_line:23",
+   "verdict": "error",
+   "detail": "'raised': from 37.41 to 20.02",
+   "sentence": "The home team held a higher defensive line than the away team in the first half because of tactical shifts detected at 19:00 and 45+1:00, where the home team raised its line from 37.41m to 20.02m (at 19:00) and then from 18.795m to 46.31m (at 45+1:00), while the away team lowered its line at those times."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2011166:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 38.55 m vs home 33.145 m",
+   "sentence": "In the second half out of possession, the away team defended with a higher line (38.55m) compared to the home team (33.145m), with a difference of 5.405m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2011166:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 38.55 m vs home 33.145 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 38.55m compared to the home team's 33.145m (a difference of 5.405m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2011166:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 38.55 m vs home 33.145 m",
+   "sentence": "The away side pushed its defensive line further up without the ball in the second half, with a line height of 38.55 metres compared to the home side's 33.145 metres (a difference of 5.405 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:higher_line:7",
+   "verdict": "ok",
+   "detail": "away 'higher': away 37.13 m vs home 33.96 m",
+   "sentence": "The away team held a higher defensive line out of possession in the second half, with a line height of 37.13 metres compared to the home team's 33.96 metres (a difference of 3.16 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:fp_extra_time:21",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The home team dropped deep (line height decreased) at 64:00 in the first period of extra time, with a severity of 1.731, shifting from 46.5269 to 22.2877 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:fp_extra_time:21",
+   "verdict": "unchecked",
+   "detail": "'decreased': no nearby from-to or team values",
+   "sentence": "The home team dropped deep (line height decreased) at 64:00 in the first period of extra time, with a severity of 1.731, shifting from 46.5269 to 22.2877 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:fp_higher_line:24",
+   "verdict": "unchecked",
+   "detail": "'dropped': no nearby from-to or team values",
+   "sentence": "The home team's defensive line dropped significantly at 24:00 in the first half, shifting from a median height of 33.1 metres to 16.6 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:fp_higher_line:24",
+   "verdict": "ok",
+   "detail": "'higher': from 32.0 to 47.3",
+   "sentence": "The away team's line remained higher overall, with its own shift at 38:00 raising it from 32.0 metres to 47.3 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:fp_third_half:27",
+   "verdict": "ok",
+   "detail": "'dropped': from 44.98 to 26.5",
+   "sentence": "The away team made two line height shifts in the third half: at 61:00, their deepest outfield player dropped from 44.98m to 26.50m, and at 87:00, they dropped further from 32.87m to 17.58m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:fp_third_half:27",
+   "verdict": "ok",
+   "detail": "'dropped': from 32.87 to 17.58",
+   "sentence": "The away team made two line height shifts in the third half: at 61:00, their deepest outfield player dropped from 44.98m to 26.50m, and at 87:00, they dropped further from 32.87m to 17.58m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:line_height_half:2~p1",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the home team's line, which was at 29.47 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:line_height_half:2~p2",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the home team's line height of 29.47 metres, with a difference of 10.57 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 37.13 m vs home 33.96 m",
+   "sentence": "In the second half out of possession, the away team defended with a higher line (37.13m) compared to the home team (33.96m), with a difference of 3.16m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 37.1289 m vs home 33.964 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 37.1289 metres compared to the home team's 33.964 metres (a difference of 3.1649 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2013725:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 37.1 m vs home 34.0 m",
+   "sentence": "The away team pushed its defensive line further up without the ball in the second half, with a line height of 37.1 m compared to the home team's 34.0 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2015213:higher_line:7",
+   "verdict": "ok",
+   "detail": "away 'higher': away 42.1 m vs home 34.7 m",
+   "sentence": "The away team held a higher defensive line out of possession in the second half (42.1 m) compared to the home team (34.7 m), with a difference of 7.5 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2015213:fp_extra_time:17",
+   "verdict": "ok",
+   "detail": "'dropped deep': from 38.76 to 22.19",
+   "sentence": "The home team dropped deep in the first period of extra time (period 2) starting around 90+1:30, with a line height shift from 38.76m to 22.19m at 90+6:00."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2015213:line_height_half:2~p1",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the home team's line, which was at 37.2 metres (a difference of 1.5 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2015213:line_height_half:2~p2",
+   "verdict": "ok",
+   "detail": "away 'higher': away 38.61 m vs home 37.16 m",
+   "sentence": "The away team's out-of-possession line height for the first half was 38.61 metres, which was higher than the home team's 37.16 metres by a difference of 1.45 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2015213:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 42.1 m vs home 34.7 m",
+   "sentence": "In the second half out of possession, the away team defended with a higher line (42.1 m) compared to the home team (34.7 m), with a difference of 7.5 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2015213:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 42.1 m vs home 34.7 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 42.1 m compared to the home team's 34.7 m (a difference of 7.5 m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2015213:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 42.1 m vs home 34.7 m",
+   "sentence": "The away team pushed its defensive line further up without the ball in the second half, with a line height of 42.1 m compared to the home team's 34.7 m (a difference of 7.5 m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2016236:higher_line:7",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.8 m vs home 34.9 m",
+   "sentence": "The away team held a higher defensive line out of possession in the second half (39.8 m) compared to the home team (34.9 m), with a difference of about 5 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2016236:fp_extra_time:22",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The home team dropped deep at the start of extra time (around 47:30) with a line height shift from 44.1693m to 26.0915m, and again later in the second half of extra time (around 83:30) when they shifted back up from 27.0028m to 47.9186m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2016236:fp_higher_line:25",
+   "verdict": "ok",
+   "detail": "home 'higher': home 41.86 m vs away 35.4 m",
+   "sentence": "The premise is incorrect: the home team held a higher defensive line (41.86 m) than the away team (35.40 m) in the first half, with a difference of 6.46 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2016236:line_height_half:2~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.8 m vs home 4.9 m",
+   "sentence": "The away team's defensive line was at a median height of 39.8 meters in the second half out of possession, which was higher than the home team's line by about 4.9 meters."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2016236:line_height_half:2~p2",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "This was higher than the home team's line height of 34.88 metres, with a difference of 4.94 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2016236:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.8 m vs home 34.9 m",
+   "sentence": "In the second half out of possession, the away team defended with a higher line (39.8 m) compared to the home team (34.9 m), with a difference of 4.9 m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2016236:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.8 m vs home 34.9 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the second half out of possession, with a line height of 39.8 m compared to the home team's 34.9 m (a difference of 4.9 m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2016236:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 39.8 m vs home 34.9 m",
+   "sentence": "The away team pushed its defensive line further up without the ball in the second half, with a line height of 39.8 m compared to the home team's 34.9 m (a difference of 4.9 m)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:higher_line:7",
+   "verdict": "ok",
+   "detail": "away 'higher': away 42.74 m vs home 30.9875 m",
+   "sentence": "The away team held a higher defensive line out of possession in the first half, with a line height of 42.74 metres compared to the home team's 30.9875 metres (a difference of 11.7525 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:fp_extra_time:19",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "The home team dropped deep (line height increased) at the following moments in the first period of extra time (period 2):\n\n- At 54:00, line height shifted from 35.0 to 19.5 metres (severity 1.11).\n- At 78:00, line height shifted from 27.7 to 48.4 metres (severity 1.47).\n- At 90:00, line height shifted from 52.1 to 31.8 metres (severity 1.45)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:fp_extra_time:19",
+   "verdict": "unchecked",
+   "detail": "'increased': no nearby from-to or team values",
+   "sentence": "The home team dropped deep (line height increased) at the following moments in the first period of extra time (period 2):\n\n- At 54:00, line height shifted from 35.0 to 19.5 metres (severity 1.11).\n- At 78:00, line height shifted from 27.7 to 48.4 metres (severity 1.47).\n- At 90:00, line height shifted from 52.1 to 31.8 metres (severity 1.45)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:fp_extra_time:19",
+   "verdict": "unchecked",
+   "detail": "'dropped deep': no nearby from-to or team values",
+   "sentence": "These shifts indicate the home team dropped deep at those times in the first period of extra time."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:fp_higher_line:21",
+   "verdict": "ok",
+   "detail": "'raised': from 26.97 to 47.13",
+   "sentence": "The home team raised their defensive line at 04:30 (severity 1.44), moving from 26.97m to 47.13m, while the away team did so earlier at 03:30 (severity 1.767), dropping from 45.16m to 20.415m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:fp_higher_line:21",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "The home team's line was higher because they shifted up after the away team had already dropped theirs, creating a disparity in defensive depth during the first half."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:fp_higher_line:21",
+   "verdict": "unchecked",
+   "detail": "'dropped': no nearby from-to or team values",
+   "sentence": "The home team's line was higher because they shifted up after the away team had already dropped theirs, creating a disparity in defensive depth during the first half."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:line_height_half:2~p2",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "The away team had a higher line height of 42.74 metres, with a difference of 11.7525 metres."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:higher_line:7~p0",
+   "verdict": "ok",
+   "detail": "away 'higher': away 42.74 m vs home 30.99 m",
+   "sentence": "In the first half out of possession, the away team defended with a higher line (42.74m) compared to the home team (30.99m), with a difference of 11.75m."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:higher_line:7~p1",
+   "verdict": "ok",
+   "detail": "away 'higher': away 42.74 m vs home 30.9875 m",
+   "sentence": "The away team's defensive line sat higher up the pitch in the first half out of possession, with a line height of 42.74 metres compared to the home team's 30.9875 metres (a difference of 11.75 metres)."
+  },
+  {
+   "source": "answer",
+   "id": "skillcorner/2017461:higher_line:7~p2",
+   "verdict": "ok",
+   "detail": "away 'further up': away 42.74 m vs home 30.9875 m",
+   "sentence": "The away side pushed its defensive line further up without the ball in the first half, with a line height of 42.74 metres compared to the home side's 30.9875 metres (a difference of 11.75 metres)."
+  },
+  {
+   "source": "summary",
+   "id": "metrica/3",
+   "verdict": "error",
+   "detail": "home 'deeper': home 35.258 m vs away 33.3942 m",
+   "sentence": "Home maintained a deeper defensive line out of possession at 35.258m versus away's 33.3942m, a gap of 1.8638m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/1874553",
+   "verdict": "ok",
+   "detail": "away 'higher': away 37.38 m vs home 33.25 m",
+   "sentence": "Home defensive line height out of possession was 33.25m versus away's 37.38m, with the away line being higher by 4.13m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/1899585",
+   "verdict": "ok",
+   "detail": "home 'higher': home 40.29 m vs away 25.47 m",
+   "sentence": "The home team maintained a higher defensive line out of possession at 40.29m compared to away's 25.47m, a difference of 14.82m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/1927964",
+   "verdict": "unchecked",
+   "detail": "'higher': no nearby from-to or team values",
+   "sentence": "Away side pressed more intensely at 0.411 versus home's 0.3845, while their defensive line sat higher at 37.68m compared to home's 33.12m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/1953632",
+   "verdict": "ok",
+   "detail": "home 'lower': home 30.775 m vs away 43.2 m",
+   "sentence": "Home maintained a lower defensive line height out of possession at 30.775m versus away's 43.2m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/1959846",
+   "verdict": "ok",
+   "detail": "away 'higher': away 39.687 m vs home 32.0943 m",
+   "sentence": "Home pressed slightly harder overall (0.4587 vs 0.4516), and away maintained a higher defensive line height at 39.687m compared to home's 32.0943m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/1986691",
+   "verdict": "ok",
+   "detail": "home 'lower': home 22.59 m vs away 44.11 m",
+   "sentence": "Home defensive line height out of possession was lower at 22.59m compared to away's 44.11m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/1996435",
+   "verdict": "error",
+   "detail": "home 'deeper': home 39.6 m vs away 32.16 m",
+   "sentence": "Home defended deeper out of possession at 39.6m compared to away's 32.16m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/1996436",
+   "verdict": "error",
+   "detail": "home 'deeper': home 38.71 m vs away 32.55 m",
+   "sentence": "Home maintained a deeper defensive line out of possession at 38.71m compared to away's 32.55m, a difference of 6.16m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2006229",
+   "verdict": "error",
+   "detail": "home 'deeper': home 43.94 m vs away 30.97 m",
+   "sentence": "Home maintained a deeper defensive line at 43.94m versus away's 30.97m out of possession."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2006363",
+   "verdict": "error",
+   "detail": "home 'deeper': home 45.47 m vs away 30.86 m",
+   "sentence": "Home maintained a deeper defensive line out of possession at 45.47 m compared to away's 30.86 m, a gap of 14.62 m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2007448",
+   "verdict": "ok",
+   "detail": "away 'higher': away 34.44 m vs home 29.125 m",
+   "sentence": "Out of possession, home maintained a line height of 29.125m versus away's 34.44m, making away's defensive line higher by 5.315m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2007721",
+   "verdict": "ok",
+   "detail": "away 'lower': away 32.8756 m vs home 36.4421 m",
+   "sentence": "The home defensive line sat at 36.4421 m while the away line was lower at 32.8756 m, a difference of 3.5665 m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2011166",
+   "verdict": "error",
+   "detail": "away 'deeper': away 41.24 m vs home 32.52 m",
+   "sentence": "Out of possession, away team maintained a deeper defensive line at 41.24m compared to home's 32.52m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2013725",
+   "verdict": "error",
+   "detail": "away 'deeper': away 39.7 m vs home 32.0 m",
+   "sentence": "Out of possession, the away team maintained a deeper defensive line at 39.7m compared to home's 32.0m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2015213",
+   "verdict": "error",
+   "detail": "away 'deeper': away 41.6 m vs home 36.5 m",
+   "sentence": "Away defended deeper out of possession at 41.6m compared to home's 36.5m, creating a 5.1m gap between the teams' defensive lines."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2016236",
+   "verdict": "ok",
+   "detail": "home 'higher': home 36.45 m vs away 36.41 m",
+   "sentence": "The home team maintained a slightly higher defensive line height at 36.45 m compared to the away team's 36.41 m."
+  },
+  {
+   "source": "summary",
+   "id": "skillcorner/2017461",
+   "verdict": "error",
+   "detail": "away 'deeper': away 35.13 m vs home 34.065 m",
+   "sentence": "Home maintained a line height of 34.065m while away sat deeper at 35.13m out of possession."
+  }
+ ]
+}

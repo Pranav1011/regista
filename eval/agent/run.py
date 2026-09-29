@@ -36,6 +36,7 @@ from regista import io  # noqa: E402
 from regista.agent.grounding import _CLOCK, _FORMATION, _ID_LIKE, _NUMBER, normalise  # noqa: E402
 from regista.agent.loop import SYSTEM_PROMPT, Agent, OllamaProvider  # noqa: E402
 from regista.agent.tools import Toolbox  # noqa: E402
+from regista.clock import match_clock  # noqa: E402
 
 RESULTS = HERE / "results"
 FROZEN = HERE / "frozen.json"
@@ -561,6 +562,255 @@ def test_headline(df: pd.DataFrame) -> list[str]:
     return lines
 
 
+def _kappa(a: list[bool], b: list[bool]) -> float:
+    a_, b_ = np.array(a, bool), np.array(b, bool)
+    po = float((a_ == b_).mean())
+    pe = a_.mean() * b_.mean() + (1 - a_.mean()) * (1 - b_.mean())
+    return float("nan") if pe == 1 else (po - pe) / (1 - pe)
+
+
+def _agree_row(name: str, auto: list[bool], human: list[bool]) -> dict:
+    return {
+        "scorer vs human": name,
+        "items": len(human),
+        "agreement": float(np.mean(np.array(auto) == np.array(human))),
+        "kappa": _kappa(auto, human),
+        "scorer positive rate": float(np.mean(auto)),
+        "human positive rate": float(np.mean(human)),
+    }
+
+
+def human_agreement(split: str, round_: str) -> dict[str, pd.DataFrame]:
+    """Automatic scorers against the hand labels of one round (see eval/agent/label.py)."""
+    from label import EXTRA_PREMISE_MATCH, load_labels
+    from summaries import CRITERIA
+
+    labels = [v for v in load_labels(round_).values() if v.get("split", split) == split]
+    model = json.loads(FROZEN.read_text())["model"]
+    path = results_path(split, model)
+    rows = {r["question"]["qid"]: r for r in map(json.loads, path.read_text().splitlines())}
+    judged = load_premise_judgments(path)
+    out: dict[str, pd.DataFrame] = {}
+    fp = [lb for lb in labels if lb["kind"] == "false_premise"]
+    if fp:
+        table = []
+        extra = [lb for lb in fp if lb["id"].startswith(EXTRA_PREMISE_MATCH + ":")]
+        rest = [lb for lb in fp if lb not in extra]
+        for name, sel in (
+            ("all", fp),
+            (f"{EXTRA_PREMISE_MATCH} stratum", extra),
+            ("other matches", rest),
+        ):
+            if not sel:
+                continue
+            human = [bool(lb["rejects_premise"] and lb["with_evidence"]) for lb in sel]
+            judge = [premise_verdict(judged[lb["id"]]) for lb in sel]
+            pattern = [bool(rows[lb["id"]]["score"]["premise_rejected_pattern"]) for lb in sel]
+            table += [
+                {"items in": name, **_agree_row("judge", judge, human)},
+                {"items in": name, **_agree_row("pattern rule", pattern, human)},
+            ]
+        out["false_premise"] = pd.DataFrame(table)
+    sm = [lb for lb in labels if lb["kind"] == "summary"]
+    if sm:
+        jf = (
+            RESULTS
+            / f"judge_{split}_{json.loads(FROZEN.read_text())['judge'].replace(':', '_')}.jsonl"
+        )
+        jrows = {
+            (r["match"], r["model"]): r
+            for r in map(json.loads, jf.read_text().splitlines())
+            if r["kind"] == "pointwise"
+        }
+        table = []
+        for c in CRITERIA:
+            h = np.array([lb[c] for lb in sm], float)
+            j = np.array([jrows[tuple(lb["id"].split("|"))][c] for lb in sm], float)
+            table.append({
+                "criterion": c, "summaries": len(sm), "human mean": h.mean(),
+                "judge mean": j.mean(), "exact agreement": float((h == j).mean()),
+                "within 1": float((abs(h - j) <= 1).mean()),
+                "judge minus human": float((j - h).mean()),
+            })  # fmt: skip
+        out["summary"] = pd.DataFrame(table)
+    ans = [lb for lb in labels if lb["kind"] == "answer"]
+    if ans:
+        auto = [bool(rows[lb["id"]]["score"]["correct"]) for lb in ans]
+        out["answer"] = pd.DataFrame(
+            [_agree_row("rule scorer", auto, [lb["correct"] for lb in ans])]
+        )
+    return out
+
+
+# flagged direction errors read by hand and found to be parser false positives
+DIRECTION_FALSE_POSITIVES = {
+    "skillcorner/1953632:fp_higher_line:24": '"then decreased multiple times later" refers to '
+    "later changes, not the quoted one",
+}
+
+
+def direction_audit_section(split: str) -> list[str]:
+    path = RESULTS / f"direction_audit_{split}.json"
+    if not path.exists():
+        return []
+    res = json.loads(path.read_text())
+    judge = {
+        r["match"]: r
+        for r in map(
+            json.loads, (RESULTS / f"judge_{split}_gemma4_12b.jsonl").read_text().splitlines()
+        )
+        if r["kind"] == "pointwise"
+    }
+    rows = []
+    for source, v in res["summary"].items():
+        errs = [r for r in res["rows"] if r["source"] == source and r["verdict"] == "error"]
+        fp = sum(r["id"] in DIRECTION_FALSE_POSITIVES for r in errs)
+        rows.append({
+            "texts": {"answer": "answers", "summary": "summaries"}[source],
+            "direction claims": v["claims"], "checked": v["checked"],
+            "flagged errors": v["errors"], "false positives (read by hand)": fp,
+            "error rate": (v["errors"] - fp) / v["checked"] if v["checked"] else np.nan,
+        })  # fmt: skip
+    lines = [
+        "## Direction audit (post-test, deterministic)",
+        "",
+        "`eval/agent/direction_audit.py` checks every line-height direction word (higher, "
+        "deeper, lower, further up, dropped deep; raised / increased / decreased for changes) "
+        "against the values stated in the same sentence. Post-test analysis only; the agent "
+        "is unchanged. Sentences without comparable values are counted as unchecked.",
+        "",
+        pd.DataFrame(rows).round(3).to_markdown(index=False),
+        "",
+        "Flagged errors:",
+        "",
+    ]
+    for r in res["rows"]:
+        if r["verdict"] != "error":
+            continue
+        extra = ""
+        if r["id"] in DIRECTION_FALSE_POSITIVES:
+            extra = f" (false positive: {DIRECTION_FALSE_POSITIVES[r['id']]})"
+        elif r["source"] == "summary" and r["id"] in judge:
+            extra = f" (judge faithfulness {judge[r['id']]['faithful']})"
+        lines.append(f"- {r['source']} `{r['id']}`: {r['detail']}{extra}")
+    lines += [
+        "",
+        'Every flagged summary error says "deeper" for the higher line; the judge rated most '
+        "of those summaries 5 for faithfulness, so the rubric judge does not catch direction "
+        "errors.",
+        "",
+    ]
+    return lines
+
+
+def end_of_recording_section(split: str) -> list[str]:
+    """Moments emitted after a period's last recorded frame, which v1.0 find_moments omits,
+    and the test items whose gold they change."""
+    toolbox = Toolbox(io.data_dir() / "store")
+    dropped = []
+    for match in SPLITS[split]:
+        m = toolbox._match(match)
+        for r in m.store.table("moments").itertuples():
+            hi = m.period_range(int(r.period))[1]
+            if r.emit_t > hi:
+                dropped.append((match, r.type, r.team, int(r.period), float(r.emit_t), hi))
+    if not dropped:
+        return []
+    model = json.loads(FROZEN.read_text())["model"]
+    rows = [json.loads(line) for line in results_path(split, model).read_text().splitlines()]
+    from label import load_labels
+
+    labelled = {lid for (_, lid) in load_labels("human_unassisted")}
+    by_qid = {r["question"]["qid"]: r["question"] for r in rows}
+    affected = []
+    for match, typ, team, period, emit_t, _ in dropped:
+        mom = toolbox._match(match).store.table("moments")
+        kept = mom[(mom["type"] == typ)]
+        for r in rows:
+            q = r["question"]
+            if q["match"] != match:
+                continue
+            base = q["template"]
+            base_q = by_qid.get(q.get("extra", {}).get("base_qid"), q)  # rewordings: base vars
+            vteam = base_q.get("extra", {}).get("vars", {}).get("team")
+            reason = None
+            earlier = [
+                x for x in kept.itertuples()
+                if (x.team == team or base == "formation_at_press_change")
+                and (int(x.period), x.emit_t) < (period, emit_t)
+            ]  # fmt: skip
+            if base == f"first_{typ}" and vteam == team and not earlier:
+                reason = f"the store's first {typ} for {team} is the omitted one"
+            elif base == "formation_at_press_change" and typ == "press_change" and not earlier:
+                reason = "the store's first press change is the omitted one"
+            elif (
+                base == "fp_no_back_line_change"
+                and typ == "back_line_change"
+                and f"the {team} team" in q["question"]
+            ):
+                reason = f"the premise is contradicted by the omitted {team} back-line change"
+            if reason:
+                affected.append((q["qid"], r["score"]["correct"], q["qid"] in labelled, reason))
+    lines = [
+        "## Known issue found after the test run: moments after the last recorded frame",
+        "",
+        "The streaming detectors emit on a one-minute grid, so a moment flagged in a "
+        "period's final window can carry an emit time up to a minute after the last "
+        "recorded frame. v1.0 `find_moments` keeps only emit times inside the recorded "
+        "range and omits these; `get_match_overview` counts them, which is why the summary "
+        "fact sheet's counts and moment list disagree. Question golds were generated from "
+        "the same omitted view, so v1.0 scoring is internally consistent, but these golds "
+        "disagree with the store. Fixed in v1.1; the v1.0 test numbers stand.",
+        "",
+        f"Omitted moments ({len(dropped)}):",
+        "",
+    ]
+    for match, typ, team, period, emit_t, hi in dropped:
+        lines.append(
+            f"- {match}: {typ} ({team}) emitted {match_clock(period, emit_t)}, "
+            f"recording ends {match_clock(period, hi)}"
+        )
+    lines += ["", f"Test items whose gold disagrees with the store ({len(affected)}):", ""]
+    for qid, correct, lab, reason in affected:
+        lines.append(
+            f"- `{qid}` (scored {'correct' if correct else 'wrong'}"
+            f"{', hand-labelled' if lab else ''}): {reason}"
+        )
+    return lines + [""]
+
+
+def human_agreement_section(split: str) -> list[str]:
+    from label import load_labels
+
+    lines = ["## Scorer-human agreement (test split, hand labels)", ""]
+    unassisted = load_labels("human_unassisted")
+    reviewed = load_labels("human_reviewed")
+    revised = [
+        r
+        for r in map(json.loads, (HERE / "human_labels.jsonl").read_text().splitlines())
+        if r.get("round") == "human_reviewed"
+    ]
+    lines += [
+        f"{len(unassisted)} items labelled blind (model and automatic verdicts hidden): "
+        "10 false-premise answers from SkillCorner matches, every Metrica game-3 "
+        "false-premise answer as an extra stratum, 10 summaries, and 10 answers from the "
+        "other categories. Two rounds: *unassisted* (the first pass) and *reviewed* "
+        f"(after a rubric-consistency review; {len(revised)} revisions, "
+        f"{sum(bool(r.get('discussed_with_claude')) for r in revised)} of them on items "
+        "discussed with Claude). A false-premise item counts as rejected by the human when "
+        'it is labelled both "rejects the premise" and "with evidence".',
+        "",
+    ]
+    for round_, name in (("human_unassisted", "unassisted"), ("human_reviewed", "reviewed")):
+        if round_ == "human_reviewed" and reviewed == unassisted:
+            lines += ["### Reviewed round", "", "No revisions yet; identical to unassisted.", ""]
+            continue
+        lines += [f"### Against {name} labels", ""]
+        for kind, df in human_agreement(split, round_).items():
+            lines += [f"{kind.replace('_', ' ')}:", "", df.round(3).to_markdown(index=False), ""]
+    return lines
+
+
 def write_report() -> Path:
     files = sorted([*RESULTS.glob("dev_*.jsonl"), *RESULTS.glob("test_*.jsonl")])
     if not files:
@@ -748,14 +998,10 @@ def write_report() -> Path:
         'counts described as "metres" are both examples. Not part of agent v1.1.',
         "",
     ]
-    labels = HERE / "human_labels.jsonl"
-    if labels.exists():
-        lines += [
-            "## Judge-human agreement",
-            "",
-            "See `eval/agent/label.py`; computed once the 30 human labels exist.",
-            "",
-        ]
+    if (HERE / "human_labels.jsonl").exists():
+        lines += human_agreement_section("test")
+    lines += direction_audit_section("test")
+    lines += end_of_recording_section("test")
     if FROZEN.exists():
         lines += ["## Frozen configuration", "", "```json", FROZEN.read_text().strip(), "```", ""]
     REPORT.write_text("\n".join(lines) + "\n")

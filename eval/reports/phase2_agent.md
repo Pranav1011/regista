@@ -253,6 +253,97 @@ Judge rationales are not reliable evidence on their own; a score is checked agai
 
 - A deterministic check of directional claims in answers and summaries (higher / deeper, more / less) against the tools' comparison fields. Grounding confirms a value came from a tool, not what the answer says about it; the summary for skillcorner/2017461 ("sat deeper at 35.13 m" for the higher line) and back-line counts described as "metres" are both examples. Not part of agent v1.1.
 
+## Scorer-human agreement (test split, hand labels)
+
+38 items labelled blind (model and automatic verdicts hidden): 10 false-premise answers from SkillCorner matches, every Metrica game-3 false-premise answer as an extra stratum, 10 summaries, and 10 answers from the other categories. Two rounds: *unassisted* (the first pass) and *reviewed* (after a rubric-consistency review; 0 revisions, 0 of them on items discussed with Claude). A false-premise item counts as rejected by the human when it is labelled both "rejects the premise" and "with evidence".
+
+### Against unassisted labels
+
+false premise:
+
+| items in          | scorer vs human   |   items |   agreement |   kappa |   scorer positive rate |   human positive rate |
+|:------------------|:------------------|--------:|------------:|--------:|-----------------------:|----------------------:|
+| all               | judge             |      18 |       0.889 |   0.679 |                  0.778 |                 0.778 |
+| all               | pattern rule      |      18 |       0.722 |   0.444 |                  0.5   |                 0.778 |
+| metrica/3 stratum | judge             |       8 |       0.875 |   0     |                  1     |                 0.875 |
+| metrica/3 stratum | pattern rule      |       8 |       0.5   |   0.158 |                  0.375 |                 0.875 |
+| other matches     | judge             |      10 |       0.9   |   0.783 |                  0.6   |                 0.7   |
+| other matches     | pattern rule      |      10 |       0.9   |   0.783 |                  0.6   |                 0.7   |
+
+summary:
+
+| criterion   |   summaries |   human mean |   judge mean |   exact agreement |   within 1 |   judge minus human |
+|:------------|------------:|-------------:|-------------:|------------------:|-----------:|--------------------:|
+| faithful    |          10 |          4.3 |            5 |               0.4 |        0.9 |                 0.7 |
+| coverage    |          10 |          4.4 |            5 |               0.4 |        1   |                 0.6 |
+| caveats     |          10 |          3.3 |            5 |               0   |        0.3 |                 1.7 |
+
+answer:
+
+| scorer vs human   |   items |   agreement |   kappa |   scorer positive rate |   human positive rate |
+|:------------------|--------:|------------:|--------:|-----------------------:|----------------------:|
+| rule scorer       |      10 |           1 |       1 |                    0.9 |                   0.9 |
+
+### Reviewed round
+
+No revisions yet; identical to unassisted.
+
+## Direction audit (post-test, deterministic)
+
+`eval/agent/direction_audit.py` checks every line-height direction word (higher, deeper, lower, further up, dropped deep; raised / increased / decreased for changes) against the values stated in the same sentence. Post-test analysis only; the agent is unchanged. Sentences without comparable values are counted as unchecked.
+
+| texts     |   direction claims |   checked |   flagged errors |   false positives (read by hand) |   error rate |
+|:----------|-------------------:|----------:|-----------------:|---------------------------------:|-------------:|
+| answers   |                172 |       135 |                7 |                                1 |        0.044 |
+| summaries |                 18 |        17 |                9 |                                0 |        0.529 |
+
+Flagged errors:
+
+- answer `skillcorner/1899585:fp_extra_time:21`: 'dropped deep': from 39.0 to 56.0
+- answer `skillcorner/1953632:fp_higher_line:24`: 'decreased': from 19.78 to 48.7 (false positive: "then decreased multiple times later" refers to later changes, not the quoted one)
+- answer `skillcorner/1986691:fp_extra_time:20`: 'dropped deeper': from 22.57 to 44.04
+- answer `skillcorner/1996436:fp_third_half:24`: 'dropping deeper': from 27.618 to 43.3731
+- answer `skillcorner/1996436:fp_third_half:24`: 'higher': from 42.1413 to 20.8889
+- answer `skillcorner/2007448:fp_extra_time:19`: 'dropped deep': from 6.01 to 45.9
+- answer `skillcorner/2011166:fp_higher_line:23`: 'raised': from 37.41 to 20.02
+- summary `metrica/3`: home 'deeper': home 35.258 m vs away 33.3942 m (judge faithfulness 5)
+- summary `skillcorner/1996435`: home 'deeper': home 39.6 m vs away 32.16 m (judge faithfulness 5)
+- summary `skillcorner/1996436`: home 'deeper': home 38.71 m vs away 32.55 m (judge faithfulness 5)
+- summary `skillcorner/2006229`: home 'deeper': home 43.94 m vs away 30.97 m (judge faithfulness 5)
+- summary `skillcorner/2006363`: home 'deeper': home 45.47 m vs away 30.86 m (judge faithfulness 5)
+- summary `skillcorner/2011166`: away 'deeper': away 41.24 m vs home 32.52 m (judge faithfulness 5)
+- summary `skillcorner/2013725`: away 'deeper': away 39.7 m vs home 32.0 m (judge faithfulness 5)
+- summary `skillcorner/2015213`: away 'deeper': away 41.6 m vs home 36.5 m (judge faithfulness 5)
+- summary `skillcorner/2017461`: away 'deeper': away 35.13 m vs home 34.065 m (judge faithfulness 2)
+
+Every flagged summary error says "deeper" for the higher line; the judge rated most of those summaries 5 for faithfulness, so the rubric judge does not catch direction errors.
+
+## Known issue found after the test run: moments after the last recorded frame
+
+The streaming detectors emit on a one-minute grid, so a moment flagged in a period's final window can carry an emit time up to a minute after the last recorded frame. v1.0 `find_moments` keeps only emit times inside the recorded range and omits these; `get_match_overview` counts them, which is why the summary fact sheet's counts and moment list disagree. Question golds were generated from the same omitted view, so v1.0 scoring is internally consistent, but these golds disagree with the store. Fixed in v1.1; the v1.0 test numbers stand.
+
+Omitted moments (7):
+
+- metrica/3: press_change (home) emitted 45+2:00, recording ends 45+1:26
+- skillcorner/1886347: back_line_change (home) emitted 90+8:00, recording ends 90+7:03
+- skillcorner/1996436: line_height_shift (away) emitted 90+5:00, recording ends 90+4:57
+- skillcorner/2007448: line_height_shift (away) emitted 45+3:00, recording ends 45+2:21
+- skillcorner/2007721: line_height_shift (away) emitted 90+5:00, recording ends 90+4:37
+- skillcorner/2010085: press_change (away) emitted 90+5:00, recording ends 90+4:13
+- skillcorner/2013725: line_height_shift (home) emitted 45+2:00, recording ends 45+1:28
+
+Test items whose gold disagrees with the store (9):
+
+- `metrica/3:first_press_change:8` (scored correct): the store's first press_change for home is the omitted one
+- `metrica/3:formation_at_press_change:10` (scored correct): the store's first press change is the omitted one
+- `metrica/3:first_press_change:8~p0` (scored correct): the store's first press_change for home is the omitted one
+- `metrica/3:first_press_change:8~p1` (scored correct): the store's first press_change for home is the omitted one
+- `metrica/3:first_press_change:8~p2` (scored correct): the store's first press_change for home is the omitted one
+- `metrica/3:formation_at_press_change:10~p0` (scored correct): the store's first press change is the omitted one
+- `metrica/3:formation_at_press_change:10~p1` (scored correct): the store's first press change is the omitted one
+- `metrica/3:formation_at_press_change:10~p2` (scored correct): the store's first press change is the omitted one
+- `skillcorner/1886347:fp_no_back_line_change:22` (scored correct, hand-labelled): the premise is contradicted by the omitted home back-line change
+
 ## Frozen configuration
 
 ```json
