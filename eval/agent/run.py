@@ -489,6 +489,18 @@ PARAPHRASE_NOTES = {
 WEAK_WORDING = 0.7
 
 
+# low judge scores whose rationale was checked by hand against the fact sheet
+REVIEWED_JUDGE_NOTES = {
+    ("test", "skillcorner/2017461"): (
+        "the stated reason is false: the judge says the summary claims 10 moments where "
+        "the fact sheet lists 9, but the fact sheet lists 10. The low score is still "
+        'deserved: the summary says the away team "sat deeper at 35.13 m" than the home '
+        "team at 34.07 m (35.13 m is the higher line) and calls the 72:00 press change a "
+        '"shift"'
+    ),
+}
+
+
 def test_headline(df: pd.DataFrame) -> list[str]:
     """SkillCorner with match-level CIs as the headline; Metrica game 3 as one match."""
     lines = ["## Test results", ""]
@@ -677,6 +689,21 @@ def write_report() -> Path:
             .to_markdown(),
             "",
         ]
+        low = point[point[["faithful", "coverage", "caveats"]].min(axis=1) < 4]
+        if len(low):
+            lines += ["Scores below 4:", ""]
+            for r in low.itertuples():
+                note = REVIEWED_JUDGE_NOTES.get((split, r.match), "rationale not reviewed")
+                lines.append(
+                    f"- {r.match}, {r.model} (faithful {r.faithful}, coverage {r.coverage}, "
+                    f"caveats {r.caveats}): {note}."
+                )
+            lines += [
+                "",
+                "Judge rationales are not reliable evidence on their own; a score is "
+                "checked against the fact sheet before it is cited.",
+                "",
+            ]
         if pair:
             agree = sum(r["order_agree"] for r in pair) / len(pair)
             wins: dict[str, int] = {}
@@ -709,6 +736,16 @@ def write_report() -> Path:
         "- The false-premise judge is an LLM (gemma4:12b); its quote is verified to be "
         "in the answer, but whether that sentence rejects the premise is its judgment. "
         "Judge-human agreement comes from the 30 hand labels (`eval/agent/label.py`).",
+        "",
+    ]
+    lines += [
+        "## Future work",
+        "",
+        "- A deterministic check of directional claims in answers and summaries (higher / "
+        "deeper, more / less) against the tools' comparison fields. Grounding confirms a "
+        "value came from a tool, not what the answer says about it; the summary for "
+        'skillcorner/2017461 ("sat deeper at 35.13 m" for the higher line) and back-line '
+        'counts described as "metres" are both examples. Not part of agent v1.1.',
         "",
     ]
     labels = HERE / "human_labels.jsonl"

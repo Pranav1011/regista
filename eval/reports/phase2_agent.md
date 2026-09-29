@@ -219,6 +219,13 @@ Rubric scores 1-5 (faithful to the fact sheet, covers flagged moments, states ca
 | llama3.1:8b |        1.5 |        2.5 |         3 |
 | qwen3.5:9b  |        5   |        5   |         5 |
 
+Scores below 4:
+
+- metrica/1, llama3.1:8b (faithful 1, coverage 2, caveats 1): rationale not reviewed.
+- metrica/2, llama3.1:8b (faithful 2, coverage 3, caveats 5): rationale not reviewed.
+
+Judge rationales are not reliable evidence on their own; a score is checked against the fact sheet before it is cited.
+
 Pairwise, both orders: 2 pairs; the verdict was the same in both orders for 1.00 of them (1 - position bias). Consistent wins: qwen3.5:9b 2.
 
 ## Summaries judged by gemma4:12b (test)
@@ -229,12 +236,22 @@ Rubric scores 1-5 (faithful to the fact sheet, covers flagged moments, states ca
 |:-----------|-----------:|-----------:|----------:|
 | qwen3.5:9b |       4.86 |       4.95 |         5 |
 
+Scores below 4:
+
+- skillcorner/2017461, qwen3.5:9b (faithful 2, coverage 4, caveats 5): the stated reason is false: the judge says the summary claims 10 moments where the fact sheet lists 9, but the fact sheet lists 10. The low score is still deserved: the summary says the away team "sat deeper at 35.13 m" than the home team at 34.07 m (35.13 m is the higher line) and calls the 72:00 press change a "shift".
+
+Judge rationales are not reliable evidence on their own; a score is checked against the fact sheet before it is cited.
+
 ## Limitations
 
 - Gold answers come from the same tools the agent calls, so this evaluation measures faithfulness to the tools (right tool, right reading, grounded numbers and times), not whether the tools are right; tool correctness is covered by the Phase 1 evaluations (`eval/reports/phase1.md`).
 - Grounding verifies values, not their meaning: a number is grounded if a tool returned it, even when the answer describes it wrongly (e.g. back-line counts, 5 -> 3 defenders, described as line heights in metres).
 - Declines are reported two ways: the decline pattern (which also matches premise corrections and caveats such as "Regista does not model the reasons"), and "no substantive answer" (the pattern matches and the answer gives no number, clock, formation, or id beyond the question's, and reports no absence of detected moments). The absence rule was added after reading test answers.
 - The false-premise judge is an LLM (gemma4:12b); its quote is verified to be in the answer, but whether that sentence rejects the premise is its judgment. Judge-human agreement comes from the 30 hand labels (`eval/agent/label.py`).
+
+## Future work
+
+- A deterministic check of directional claims in answers and summaries (higher / deeper, more / less) against the tools' comparison fields. Grounding confirms a value came from a tool, not what the answer says about it; the summary for skillcorner/2017461 ("sat deeper at 35.13 m" for the higher line) and back-line counts described as "metres" are both examples. Not part of agent v1.1.
 
 ## Frozen configuration
 
