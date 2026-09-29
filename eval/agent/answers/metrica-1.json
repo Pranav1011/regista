@@ -1,6 +1,7 @@
 {
  "model": "qwen3.5:9b",
- "generated": "2026-09-28",
+ "agent_version": "v1.1",
+ "generated": "2026-09-29",
  "items": [
   {
    "question": "What formation did each team use without the ball, and how clear-cut was it?",
@@ -192,7 +193,7 @@
   },
   {
    "question": "When did either team change its back line, according to the detectors?",
-   "answer_text": "The back line change moments were detected at the following match clocks: 13:00, 28:00, 45+1:00, and 76:00 (all by the away team).",
+   "answer_text": "The away team changed its back line at 13:00, 28:00, 45+1:00, and 76:00 in the match metrica/1.",
    "status": "verified",
    "citations": [
     {
@@ -322,7 +323,7 @@
   },
   {
    "question": "What tactical moments did Regista detect after 60:00?",
-   "answer_text": "After 60:00, Regista detected two tactical moments for the away team in the second half: a back_line_change at 76:00 (line height dropped from 5.0 to 3.0) and a press_change at 78:00 (press intensity fell from 0.6396 to 0.2755).",
+   "answer_text": "After 60:00, Regista detected two tactical moments for the away team: a back_line_change at 76:00 (reducing defenders in the back line from 5 to 3) and a press_change at 78:00 (decreasing press intensity from 0.6396 to 0.2755).",
    "status": "verified",
    "citations": [
     {

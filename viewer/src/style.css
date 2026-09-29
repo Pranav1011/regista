@@ -94,6 +94,8 @@ select {
 }
 
 .stage { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+/* two columns: keep the replay in view while reading answers, so citations visibly seek it */
+@media (min-width: 62.01rem) { .stage { position: sticky; top: var(--space-4); } }
 .pitch-frame { position: relative; }
 #pitch {
   display: block; width: 100%; aspect-ratio: 113 / 76; border-radius: 2px;

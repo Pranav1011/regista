@@ -27,7 +27,7 @@ export interface AnswerItem {
   question: string; answer_text: string; status: "verified" | "unverified";
   citations: Citation[]; caveats: string[];
 }
-export interface Answers { model: string; generated: string; items: AnswerItem[] }
+export interface Answers { model: string; generated: string; agent_version?: string; items: AnswerItem[] }
 export interface IndexEntry { id: string; title: string; split: string }
 
 export interface MatchData {
