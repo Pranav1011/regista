@@ -11,16 +11,17 @@ Dev split: Metrica games 1-2. Test split: Metrica game 3 + SkillCorner, run once
 
 Accuracy per category with a 95% CI from resampling matches (not questions).
 
-| category      |   questions |   matches |   accuracy |   ci_low |   ci_high |
-|:--------------|------------:|----------:|-----------:|---------:|----------:|
-| comparison    |          54 |        20 |      1     |    1     |     1     |
-| false_premise |         161 |        20 |      0.665 |    0.616 |     0.711 |
-| lookup        |         100 |        20 |      1     |    1     |     1     |
-| multi_step    |          39 |        20 |      0.949 |    0.872 |     1     |
-| paraphrase    |         630 |        20 |      0.956 |    0.945 |     0.966 |
-| reliability   |          60 |        20 |      0.983 |    0.95  |     1     |
-| temporal      |          31 |        19 |      1     |    1     |     1     |
-| unanswerable  |         100 |        20 |      1     |    1     |     1     |
+| category                  |   questions |   matches |   accuracy |   ci_low |   ci_high |
+|:--------------------------|------------:|----------:|-----------:|---------:|----------:|
+| comparison                |          54 |        20 |      1     |    1     |     1     |
+| false_premise             |         161 |        20 |      0.665 |    0.616 |     0.711 |
+| lookup                    |         100 |        20 |      1     |    1     |     1     |
+| multi_step                |          39 |        20 |      0.949 |    0.872 |     1     |
+| paraphrase (answerable)   |         570 |        20 |      0.951 |    0.939 |     0.962 |
+| paraphrase (unanswerable) |          60 |        20 |      1     |    1     |     1     |
+| reliability               |          60 |        20 |      0.983 |    0.95  |     1     |
+| temporal                  |          31 |        19 |      1     |    1     |     1     |
+| unanswerable              |         100 |        20 |      1     |    1     |     1     |
 
 Overall 0.928; matched expected tools 0.905; citation validity 0.995; number grounding 0.973; abstention accuracy 1.000; declined answerable questions: 0.061 by the decline pattern, 0.002 with no substantive answer; latency p50 10.7 s, p95 17.3 s.
 
@@ -28,16 +29,17 @@ Overall 0.928; matched expected tools 0.905; citation validity 0.995; number gro
 
 One match, so no confidence interval is given; read it as one observation.
 
-| q_category    |   questions |   accuracy |
-|:--------------|------------:|-----------:|
-| comparison    |           3 |          1 |
-| false_premise |           8 |          1 |
-| lookup        |           5 |          1 |
-| multi_step    |           2 |          1 |
-| paraphrase    |          30 |          1 |
-| reliability   |           3 |          1 |
-| temporal      |           1 |          1 |
-| unanswerable  |           5 |          1 |
+| q_category                |   questions |   accuracy |
+|:--------------------------|------------:|-----------:|
+| comparison                |           3 |          1 |
+| false_premise             |           8 |          1 |
+| lookup                    |           5 |          1 |
+| multi_step                |           2 |          1 |
+| paraphrase (answerable)   |          27 |          1 |
+| paraphrase (unanswerable) |           3 |          1 |
+| reliability               |           3 |          1 |
+| temporal                  |           1 |          1 |
+| unanswerable              |           5 |          1 |
 
 On its 8 false-premise items the judge scored 1.00 and the pattern rule 0.38; these items are hand-labelled as an extra stratum in `eval/agent/label.py`.
 
@@ -91,16 +93,17 @@ On its 8 false-premise items the judge scored 1.00 and the pattern rule 0.38; th
 
 ## dev / qwen3.5:9b: accuracy per category
 
-| q_category    |   questions |   accuracy |   tool_selection |
-|:--------------|------------:|-----------:|-----------------:|
-| comparison    |           6 |      1     |            1     |
-| false_premise |          18 |      0.833 |            0.778 |
-| lookup        |          10 |      1     |            1     |
-| multi_step    |           4 |      1     |            1     |
-| paraphrase    |          66 |      0.985 |            0.97  |
-| reliability   |           6 |      1     |            1     |
-| temporal      |           4 |      1     |            1     |
-| unanswerable  |          10 |      1     |            1     |
+| q_category                |   questions |   accuracy |   tool_selection |
+|:--------------------------|------------:|-----------:|-----------------:|
+| comparison                |           6 |      1     |            1     |
+| false_premise             |          18 |      0.833 |            0.778 |
+| lookup                    |          10 |      1     |            1     |
+| multi_step                |           4 |      1     |            1     |
+| paraphrase (answerable)   |          60 |      0.983 |            0.967 |
+| paraphrase (unanswerable) |           6 |      1     |            1     |
+| reliability               |           6 |      1     |            1     |
+| temporal                  |           4 |      1     |            1     |
+| unanswerable              |          10 |      1     |            1     |
 
 ### False premise: LLM judge (primary) vs pattern rule (secondary)
 
@@ -127,42 +130,45 @@ Without them (13 items): correct agreement 0.85, kappa 0.65.
 
 ## test / qwen3.5:9b: accuracy per category
 
-| q_category    |   questions |   accuracy |   tool_selection |
-|:--------------|------------:|-----------:|-----------------:|
-| comparison    |          57 |      1     |            1     |
-| false_premise |         169 |      0.68  |            0.604 |
-| lookup        |         105 |      1     |            1     |
-| multi_step    |          41 |      0.951 |            0.951 |
-| paraphrase    |         660 |      0.958 |            0.955 |
-| reliability   |          63 |      0.984 |            1     |
-| temporal      |          32 |      1     |            1     |
-| unanswerable  |         105 |      1     |            1     |
+| q_category                |   questions |   accuracy |   tool_selection |
+|:--------------------------|------------:|-----------:|-----------------:|
+| comparison                |          57 |      1     |            1     |
+| false_premise             |         169 |      0.68  |            0.604 |
+| lookup                    |         105 |      1     |            1     |
+| multi_step                |          41 |      0.951 |            0.951 |
+| paraphrase (answerable)   |         597 |      0.953 |            0.95  |
+| paraphrase (unanswerable) |          63 |      1     |            1     |
+| reliability               |          63 |      0.984 |            1     |
+| temporal                  |          32 |      1     |            1     |
+| unanswerable              |         105 |      1     |            1     |
 
 ### metrica (1 matches), match-level bootstrap 95% CI
 
-| category      |   questions |   matches |   accuracy |   ci_low |   ci_high |
-|:--------------|------------:|----------:|-----------:|---------:|----------:|
-| comparison    |           3 |         1 |          1 |        1 |         1 |
-| false_premise |           8 |         1 |          1 |        1 |         1 |
-| lookup        |           5 |         1 |          1 |        1 |         1 |
-| multi_step    |           2 |         1 |          1 |        1 |         1 |
-| paraphrase    |          30 |         1 |          1 |        1 |         1 |
-| reliability   |           3 |         1 |          1 |        1 |         1 |
-| temporal      |           1 |         1 |          1 |        1 |         1 |
-| unanswerable  |           5 |         1 |          1 |        1 |         1 |
+| category                  |   questions |   matches |   accuracy |   ci_low |   ci_high |
+|:--------------------------|------------:|----------:|-----------:|---------:|----------:|
+| comparison                |           3 |         1 |          1 |        1 |         1 |
+| false_premise             |           8 |         1 |          1 |        1 |         1 |
+| lookup                    |           5 |         1 |          1 |        1 |         1 |
+| multi_step                |           2 |         1 |          1 |        1 |         1 |
+| paraphrase (answerable)   |          27 |         1 |          1 |        1 |         1 |
+| paraphrase (unanswerable) |           3 |         1 |          1 |        1 |         1 |
+| reliability               |           3 |         1 |          1 |        1 |         1 |
+| temporal                  |           1 |         1 |          1 |        1 |         1 |
+| unanswerable              |           5 |         1 |          1 |        1 |         1 |
 
 ### skillcorner (20 matches), match-level bootstrap 95% CI
 
-| category      |   questions |   matches |   accuracy |   ci_low |   ci_high |
-|:--------------|------------:|----------:|-----------:|---------:|----------:|
-| comparison    |          54 |        20 |      1     |    1     |     1     |
-| false_premise |         161 |        20 |      0.665 |    0.616 |     0.711 |
-| lookup        |         100 |        20 |      1     |    1     |     1     |
-| multi_step    |          39 |        20 |      0.949 |    0.872 |     1     |
-| paraphrase    |         630 |        20 |      0.956 |    0.945 |     0.966 |
-| reliability   |          60 |        20 |      0.983 |    0.95  |     1     |
-| temporal      |          31 |        19 |      1     |    1     |     1     |
-| unanswerable  |         100 |        20 |      1     |    1     |     1     |
+| category                  |   questions |   matches |   accuracy |   ci_low |   ci_high |
+|:--------------------------|------------:|----------:|-----------:|---------:|----------:|
+| comparison                |          54 |        20 |      1     |    1     |     1     |
+| false_premise             |         161 |        20 |      0.665 |    0.616 |     0.711 |
+| lookup                    |         100 |        20 |      1     |    1     |     1     |
+| multi_step                |          39 |        20 |      0.949 |    0.872 |     1     |
+| paraphrase (answerable)   |         570 |        20 |      0.951 |    0.939 |     0.962 |
+| paraphrase (unanswerable) |          60 |        20 |      1     |    1     |     1     |
+| reliability               |          60 |        20 |      0.983 |    0.95  |     1     |
+| temporal                  |          31 |        19 |      1     |    1     |     1     |
+| unanswerable              |         100 |        20 |      1     |    1     |     1     |
 
 ### False premise: LLM judge (primary) vs pattern rule (secondary)
 

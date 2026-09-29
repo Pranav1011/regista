@@ -350,7 +350,7 @@ def summarize(df: pd.DataFrame) -> dict:
     # count as unanswerable
     answerable = df[df["base_category"] != "unanswerable"]
     unanswerable = df[df["base_category"] == "unanswerable"]
-    per_cat = df.groupby("q_category").agg(
+    per_cat = df.groupby(report_category(df)).agg(
         questions=("correct", "size"),
         accuracy=("correct", "mean"),
         tool_selection=("tool_selection", "mean"),
@@ -432,12 +432,20 @@ def worst(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
 BOOTSTRAP = 2000
 
 
+def report_category(df: pd.DataFrame) -> pd.Series:
+    """Category for tables: rewordings are split into answerable and unanswerable (xg), so
+    correct refusals do not inflate paraphrase accuracy."""
+    para = df["q_category"] == "paraphrase"
+    kind = np.where(df["base_category"] == "unanswerable", "unanswerable", "answerable")
+    return df["q_category"].where(~para, "paraphrase (" + pd.Series(kind, index=df.index) + ")")
+
+
 def category_ci(df: pd.DataFrame, seed: int = 0) -> pd.DataFrame:
     """Accuracy per category with a 95% CI from resampling matches (not questions)."""
     rng = np.random.default_rng(seed)
     matches = sorted(df["q_match"].unique())
     rows = []
-    for cat, g in df.groupby("q_category"):
+    for cat, g in df.groupby(report_category(df)):
         per = g.groupby("q_match")["correct"].agg(["sum", "size"]).reindex(matches, fill_value=0)
         a, n = per["sum"].to_numpy(float), per["size"].to_numpy(float)
         idx = rng.integers(0, len(matches), size=(BOOTSTRAP, len(matches)))
@@ -506,7 +514,7 @@ def test_headline(df: pd.DataFrame) -> list[str]:
         ]
     m3 = df[src == "metrica"]
     if len(m3):
-        per = m3.groupby("q_category")["correct"].agg(questions="size", accuracy="mean")
+        per = m3.groupby(report_category(m3))["correct"].agg(questions="size", accuracy="mean")
         lines += [
             f"### Metrica game 3: a single-match observation ({len(m3)} questions)",
             "",
