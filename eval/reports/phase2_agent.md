@@ -257,7 +257,7 @@ Judge rationales are not reliable evidence on their own; a score is checked agai
 
 ## Scorer-human agreement (test split, hand labels)
 
-38 items labelled blind (model and automatic verdicts hidden): 10 false-premise answers from SkillCorner matches, every Metrica game-3 false-premise answer as an extra stratum, 10 summaries, and 10 answers from the other categories. Two rounds: *unassisted* (the first pass) and *reviewed* (after a rubric-consistency review; 9 revisions, 9 of them on items discussed with Claude). A false-premise item counts as rejected by the human when it is labelled both "rejects the premise" and "with evidence". Reviewed-round summary labels were given with the v1.1 fact sheet on screen, which adds the tools' line-height and press comparisons; the judge graded against the v1.0 fact sheet without them.
+38 items labelled blind (model and automatic verdicts hidden): 10 false-premise answers from SkillCorner matches, every Metrica game-3 false-premise answer as an extra stratum, 10 summaries, and 10 answers from the other categories. Two rounds: *unassisted* (the first pass) and *reviewed* (after a rubric-consistency review; 14 revisions, 14 of them on items discussed with Claude). A false-premise item counts as rejected by the human when it is labelled both "rejects the premise" and "with evidence". Reviewed-round summary labels were given with the v1.1 fact sheet on screen, which adds the tools' line-height and press comparisons; the judge graded against the v1.0 fact sheet without them.
 
 Invalid gold: `skillcorner/1886347:fp_no_back_line_change:22`: the premise "the home team changed its back line" is true: a home back-line change at 90+8:00 was hidden by the v1.0 find_moments bug, so the false-premise gold is invalid. Agreement is given with and without it.
 
@@ -298,22 +298,22 @@ false premise:
 
 | items in                               | scorer vs human   |   items |   agreement |   kappa |   scorer positive rate |   human positive rate |
 |:---------------------------------------|:------------------|--------:|------------:|--------:|-----------------------:|----------------------:|
-| all                                    | judge             |      18 |       0.833 |   0.557 |                  0.778 |                 0.722 |
-| all                                    | pattern rule      |      18 |       0.778 |   0.556 |                  0.5   |                 0.722 |
-| all, excluding invalid golds           | judge             |      17 |       0.824 |   0.549 |                  0.765 |                 0.706 |
-| all, excluding invalid golds           | pattern rule      |      17 |       0.765 |   0.541 |                  0.471 |                 0.706 |
+| all                                    | judge             |      18 |       0.889 |   0.727 |                  0.778 |                 0.667 |
+| all                                    | pattern rule      |      18 |       0.833 |   0.667 |                  0.5   |                 0.667 |
+| all, excluding invalid golds           | judge             |      17 |       0.882 |   0.721 |                  0.765 |                 0.647 |
+| all, excluding invalid golds           | pattern rule      |      17 |       0.824 |   0.653 |                  0.471 |                 0.647 |
 | metrica/3 stratum                      | judge             |       8 |       0.75  |   0     |                  1     |                 0.75  |
 | metrica/3 stratum                      | pattern rule      |       8 |       0.625 |   0.333 |                  0.375 |                 0.75  |
-| other matches                          | judge             |      10 |       0.9   |   0.783 |                  0.6   |                 0.7   |
-| other matches                          | pattern rule      |      10 |       0.9   |   0.783 |                  0.6   |                 0.7   |
-| other matches, excluding invalid golds | judge             |       9 |       0.889 |   0.769 |                  0.556 |                 0.667 |
-| other matches, excluding invalid golds | pattern rule      |       9 |       0.889 |   0.769 |                  0.556 |                 0.667 |
+| other matches                          | judge             |      10 |       1     |   1     |                  0.6   |                 0.6   |
+| other matches                          | pattern rule      |      10 |       1     |   1     |                  0.6   |                 0.6   |
+| other matches, excluding invalid golds | judge             |       9 |       1     |   1     |                  0.556 |                 0.556 |
+| other matches, excluding invalid golds | pattern rule      |       9 |       1     |   1     |                  0.556 |                 0.556 |
 
 summary:
 
 | criterion   |   summaries |   human mean |   judge mean |   exact agreement |   within 1 |   judge minus human |
 |:------------|------------:|-------------:|-------------:|------------------:|-----------:|--------------------:|
-| faithful    |          10 |          3.4 |            5 |               0.3 |        0.5 |                 1.6 |
+| faithful    |          10 |          3.2 |            5 |               0.3 |        0.4 |                 1.8 |
 | coverage    |          10 |          4.5 |            5 |               0.5 |        1   |                 0.5 |
 | caveats     |          10 |          3.3 |            5 |               0   |        0.3 |                 1.7 |
 

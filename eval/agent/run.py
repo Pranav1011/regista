@@ -880,6 +880,82 @@ def human_agreement_section(split: str) -> list[str]:
     return lines
 
 
+RESULTS_JSON = HERE.parent / "reports" / "phase2_results.json"
+
+
+def write_results_json() -> Path | None:
+    """The headline Phase 2 numbers for the README block (eval/readme_block.py)."""
+    frozen = json.loads(FROZEN.read_text())
+    test = results_path("test", frozen["model"])
+    if not test.exists():
+        return None
+    df = load(test)
+    src = df["q_match"].str.split("/").str[0]
+    sc, m3 = df[src == "skillcorner"], df[src == "metrica"]
+    s = summarize(sc)
+    ci = category_ci(sc)
+    out = {
+        "model": frozen["model"],
+        "judge": frozen["judge"],
+        "skillcorner": {
+            "matches": int(sc["q_match"].nunique()),
+            "questions": len(sc),
+            "accuracy": s["overall_accuracy"],
+            "number_grounding": s["number_grounding"],
+            "citation_validity": s["citation_validity"],
+            "latency_p50": s["latency_p50"],
+            "latency_p95": s["latency_p95"],
+            "categories": {
+                c: {"n": int(r.questions), "acc": r.accuracy, "lo": r.ci_low, "hi": r.ci_high}
+                for c, r in ci.iterrows()
+            },
+        },
+        "metrica3": {
+            "questions": len(m3),
+            "accuracy": float(m3["correct"].mean()),
+            "golds_from_incomplete_moments": sum(
+                q.startswith("metrica/") for q, *_ in end_of_recording_items("test")[1]
+            ),
+        },
+    }
+    sm = RESULTS / f"summaries_test_{frozen['model'].replace(':', '_')}.jsonl"
+    audit = RESULTS / "direction_audit_test.json"
+    if audit.exists() and sm.exists():
+        a = json.loads(audit.read_text())
+        out["direction_audit"] = {
+            "summaries": sum(1 for _ in sm.open()),
+            "summaries_with_error": a["summary"]["summary"]["texts_with_error"],
+        }
+    if (HERE / "human_labels.jsonl").exists():
+        agree = {}
+        for round_ in ("human_unassisted", "human_reviewed"):
+            h = human_agreement("test", round_)
+            fp = h["false_premise"].set_index(["items in", "scorer vs human"])
+            summ = h["summary"].set_index("criterion")
+            agree[round_] = {
+                "premise_judge_agreement": fp.loc[("all", "judge"), "agreement"],
+                "premise_judge_kappa": fp.loc[("all", "judge"), "kappa"],
+                "premise_items": int(fp.loc[("all", "judge"), "items"]),
+                "summary_faithful_human": summ.loc["faithful", "human mean"],
+                "summary_faithful_judge": summ.loc["faithful", "judge mean"],
+            }
+        out["human_agreement"] = agree
+    toolbox = Toolbox(io.data_dir() / "store")
+    counts = [len(toolbox._match(m).store.table("moments")) for m in SPLITS["test"]]
+    out["moments"] = {
+        "matches": len(counts),
+        "median": float(np.median(counts)),
+        "min": int(min(counts)),
+        "max": int(max(counts)),
+        "above_12": int(sum(c > 12 for c in counts)),
+    }
+    RESULTS_JSON.write_text(json.dumps(out, indent=1, default=float) + "\n")
+    from readme_block import update_readme_phase2
+
+    update_readme_phase2(out)
+    return RESULTS_JSON
+
+
 def write_report() -> Path:
     files = sorted([*RESULTS.glob("dev_*.jsonl"), *RESULTS.glob("test_*.jsonl")])
     if not files:
@@ -1074,6 +1150,7 @@ def write_report() -> Path:
     if FROZEN.exists():
         lines += ["## Frozen configuration", "", "```json", FROZEN.read_text().strip(), "```", ""]
     REPORT.write_text("\n".join(lines) + "\n")
+    write_results_json()
     return REPORT
 
 

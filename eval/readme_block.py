@@ -1,9 +1,10 @@
-"""Render the README results block from eval/reports/phase1_results.json.
+"""Render the README results blocks from the committed results files.
 
-`eval/phase1.py` writes the results file and calls `update_readme()`. CI runs
-`uv run python eval/readme_block.py --check`, which fails if the README block
-differs from what the committed results file renders to. (CI does not re-run
-the evaluation itself; that needs the open data and about 5 minutes.)
+Phase 1: eval/reports/phase1_results.json (written by `eval/phase1.py`, which also
+calls `update_readme()`). Phase 2: eval/reports/phase2_results.json (written by
+`eval/agent/run.py --report`). CI runs `uv run python eval/readme_block.py --check`,
+which fails if either README block differs from what its results file renders to.
+(CI does not re-run the evaluations; they need the open data and local models.)
 """
 
 from __future__ import annotations
@@ -17,6 +18,18 @@ REPO = Path(__file__).resolve().parent.parent
 README = REPO / "README.md"
 RESULTS_PATH = REPO / "eval" / "reports" / "phase1_results.json"
 START, END = "<!-- results:start -->", "<!-- results:end -->"
+PHASE2_PATH = REPO / "eval" / "reports" / "phase2_results.json"
+START2, END2 = "<!-- phase2:start -->", "<!-- phase2:end -->"
+CATEGORY_NAMES = {
+    "lookup": "Lookup (formation, line height, top pass pair)",
+    "comparison": "Comparison (which team pressed more, held a higher line)",
+    "temporal": "When (first detected change)",
+    "multi_step": "Multi-step (top passer and completion)",
+    "paraphrase (answerable)": "Reworded questions (answerable)",
+    "reliability": "Low-confidence formations flagged as close calls",
+    "unanswerable": "Unanswerable (xG, player names, score): declined",
+    "false_premise": "False premise rejected with evidence",
+}
 
 
 def render(r: dict) -> str:
@@ -62,10 +75,82 @@ def render(r: dict) -> str:
     )
 
 
-def _current_block(text: str) -> str:
-    if START not in text or END not in text:
-        raise ValueError(f"README is missing the {START} / {END} markers")
-    return text[text.index(START) : text.index(END) + len(END)]
+def render_phase2(r: dict) -> str:
+    sc, cats = r["skillcorner"], r["skillcorner"]["categories"]
+    rows = [
+        f"Frozen agent: `{r['model']}` via Ollama (local, no paid API), tested once on held-out "
+        f"matches after freezing on Metrica games 1-2. Headline: SkillCorner, {sc['matches']} "
+        f"matches, {sc['questions']} questions; 95% intervals resample matches.",
+        "",
+        "| Question type | Accuracy (95% CI) |",
+        "|---|---|",
+    ]
+    for key, name in CATEGORY_NAMES.items():
+        c = cats[key]
+        ci = "" if c["lo"] == c["hi"] == c["acc"] else f" ({c['lo']:.2f}-{c['hi']:.2f})"
+        rows.append(f"| {name}, n = {c['n']} | {c['acc']:.3f}{ci} |")
+    rows += [
+        f"| **All SkillCorner questions** | **{sc['accuracy']:.3f}** |",
+        "",
+        "Every number and match time in an answer is checked against the tool outputs "
+        f"({sc['number_grounding']:.3f} of answers passed); citations point at recorded frames "
+        f"and cover the time asked about ({sc['citation_validity']:.3f}); median answer time "
+        f"{sc['latency_p50']:.1f} s on a laptop. Metrica game 3 "
+        f"({r['metrica3']['questions']} questions) scored {r['metrica3']['accuracy']:.3f}: one "
+        f"match, so no interval, and {r['metrica3']['golds_from_incomplete_moments']} of its "
+        "golds came from a moment list missing one late first-half moment (a v1.0 bug, fixed "
+        "in v1.1; see the report).",
+        "",
+        "What the automatic scores miss:",
+        "",
+    ]
+    if "direction_audit" in r:
+        d = r["direction_audit"]
+        rows.append(
+            f"- A deterministic audit found {d['summaries_with_error']} of {d['summaries']} match "
+            'summaries calling the higher defensive line "deeper"; the LLM judge '
+            f"(`{r['judge']}`) rated most of them 5/5 for faithfulness."
+        )
+    if "human_agreement" in r:
+        u = r["human_agreement"]["human_unassisted"]
+        rv = r["human_agreement"]["human_reviewed"]
+        rows.append(
+            f"- Against {u['premise_items']} hand labels, the false-premise judge agreed "
+            f"{u['premise_judge_agreement']:.2f} (kappa {u['premise_judge_kappa']:.2f}; "
+            f"{rv['premise_judge_agreement']:.2f} after a rubric review). The summary judge "
+            f"averaged {u['summary_faithful_judge']:.1f}/5 for faithfulness where the hand "
+            f"labels averaged {u['summary_faithful_human']:.1f} "
+            f"({rv['summary_faithful_human']:.1f} after review)."
+        )
+    m = r["moments"]
+    rows += [
+        f"- Tactical-moment detectors flag a median {m['median']:.0f} moments per held-out "
+        f"match (range {m['min']}-{m['max']}; {m['above_12']} above the 12-per-match reading "
+        "budget). There is no ground truth for tactical moments.",
+    ]
+    return "\n".join(
+        [
+            START2,
+            "<!-- Generated by eval/agent/run.py --report from eval/reports/phase2_results.json. "
+            "Do not edit by hand. -->",
+            "",
+            *rows,
+            "",
+            "Full report with every category, per-template results, judge-human agreement, "
+            "and known issues: [`eval/reports/phase2_agent.md`](eval/reports/phase2_agent.md); "
+            "detected moments: [`eval/reports/phase2_moments.md`](eval/reports/phase2_moments.md)."
+            " The demo runs agent v1.1, which fixes four bugs found after the test run "
+            "([ADR-009](docs/DESIGN.md#agent-v11-post-test-bug-fixes)); the numbers above are "
+            "for the evaluated v1.0.",
+            END2,
+        ]
+    )
+
+
+def _current_block(text: str, start: str = START, end: str = END) -> str:
+    if start not in text or end not in text:
+        raise ValueError(f"README is missing the {start} / {end} markers")
+    return text[text.index(start) : text.index(end) + len(end)]
 
 
 def update_readme(results: dict) -> None:
@@ -73,17 +158,30 @@ def update_readme(results: dict) -> None:
     README.write_text(text.replace(_current_block(text), render(results)))
 
 
+def update_readme_phase2(results: dict) -> None:
+    text = README.read_text()
+    block = _current_block(text, START2, END2)
+    README.write_text(text.replace(block, render_phase2(results)))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail if the README block is stale")
     args = parser.parse_args()
     results = json.loads(RESULTS_PATH.read_text())
+    phase2 = json.loads(PHASE2_PATH.read_text())
     if args.check:
-        if _current_block(README.read_text()) != render(results):
+        text = README.read_text()
+        if _current_block(text) != render(results):
             sys.exit("README results block is stale: run `uv run python eval/phase1.py`")
-        print("README results block matches eval/reports/phase1_results.json")
+        if _current_block(text, START2, END2) != render_phase2(phase2):
+            sys.exit(
+                "README Phase 2 block is stale: run `uv run python eval/agent/run.py --report`"
+            )
+        print("README results blocks match eval/reports/phase{1,2}_results.json")
     else:
         update_readme(results)
+        update_readme_phase2(phase2)
 
 
 if __name__ == "__main__":

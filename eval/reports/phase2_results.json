@@ -1,0 +1,101 @@
+{
+ "model": "qwen3.5:9b",
+ "judge": "gemma4:12b",
+ "skillcorner": {
+  "matches": 20,
+  "questions": 1175,
+  "accuracy": 0.9276595744680851,
+  "number_grounding": 0.9727659574468085,
+  "citation_validity": 0.9950738916256158,
+  "latency_p50": 10.69,
+  "latency_p95": 17.296999999999997,
+  "categories": {
+   "comparison": {
+    "n": 54,
+    "acc": 1.0,
+    "lo": 1.0,
+    "hi": 1.0
+   },
+   "false_premise": {
+    "n": 161,
+    "acc": 0.6645962732919255,
+    "lo": 0.6158930302051365,
+    "hi": 0.7108433734939759
+   },
+   "lookup": {
+    "n": 100,
+    "acc": 1.0,
+    "lo": 1.0,
+    "hi": 1.0
+   },
+   "multi_step": {
+    "n": 39,
+    "acc": 0.9487179487179487,
+    "lo": 0.8717948717948718,
+    "hi": 1.0
+   },
+   "paraphrase (answerable)": {
+    "n": 570,
+    "acc": 0.9508771929824561,
+    "lo": 0.9387387387387387,
+    "hi": 0.9621993127147767
+   },
+   "paraphrase (unanswerable)": {
+    "n": 60,
+    "acc": 1.0,
+    "lo": 1.0,
+    "hi": 1.0
+   },
+   "reliability": {
+    "n": 60,
+    "acc": 0.9833333333333333,
+    "lo": 0.95,
+    "hi": 1.0
+   },
+   "temporal": {
+    "n": 31,
+    "acc": 1.0,
+    "lo": 1.0,
+    "hi": 1.0
+   },
+   "unanswerable": {
+    "n": 100,
+    "acc": 1.0,
+    "lo": 1.0,
+    "hi": 1.0
+   }
+  }
+ },
+ "metrica3": {
+  "questions": 57,
+  "accuracy": 1.0,
+  "golds_from_incomplete_moments": 8
+ },
+ "direction_audit": {
+  "summaries": 21,
+  "summaries_with_error": 9
+ },
+ "human_agreement": {
+  "human_unassisted": {
+   "premise_judge_agreement": 0.8888888888888888,
+   "premise_judge_kappa": 0.6785714285714284,
+   "premise_items": 18,
+   "summary_faithful_human": 4.3,
+   "summary_faithful_judge": 5.0
+  },
+  "human_reviewed": {
+   "premise_judge_agreement": 0.8888888888888888,
+   "premise_judge_kappa": 0.7272727272727272,
+   "premise_items": 18,
+   "summary_faithful_human": 3.2,
+   "summary_faithful_judge": 5.0
+  }
+ },
+ "moments": {
+  "matches": 21,
+  "median": 10.0,
+  "min": 2,
+  "max": 17,
+  "above_12": 4
+ }
+}
