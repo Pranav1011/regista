@@ -373,6 +373,31 @@ checked identical. The dev split was nevertheless re-run on the fixed code and
 re-frozen (fourth run; the third is archived), so the frozen code hash is
 backed by a dev run. No test answer existed at that point.
 
+**Agent v1.1: post-test bug fixes.** After the test run and the hand labels, four
+bugs found by reading test output were fixed. The prompt, model, and loop are
+unchanged; `frozen.json` remains the record of the v1.0 test run, and
+`release_v1.1.json` pins the same model and prompt with the new code hash. The
+v1.0 test numbers stand; v1.1 was not re-scored on the test split.
+- *Units on moment evidence.* Moment `before`/`after` values carried no unit, and
+  the model described back-line counts (5 -> 3 defenders) as line heights in
+  metres. Each moment now states what its values measure.
+- *First-half stoppage ranges.* "45:00" means the start of the second half, so a
+  range from "45:00" to a first-half stoppage clock ("45+1:28") was empty and the
+  tool returned an error (one test answer). Such a range now resolves to the first
+  half's stoppage time; "45:00" on its own is unchanged. Regression test added.
+- *Moments after the last recorded frame.* The detectors emit on a one-minute
+  grid, so a moment in a period's final window can be emitted up to a minute after
+  the last recorded frame; `find_moments` omitted these while the match overview
+  counted them. Seven test-split moments were omitted, and nine test golds
+  disagree with the store (listed in the report); v1.0 scoring is internally
+  consistent because golds and answers used the same view. Regression test added.
+- *Comparisons in the summary fact sheet.* The fact sheet the summary judge
+  grades against lacked the deterministic comparisons the tools return (which
+  line is higher, which team pressed more, the gap), the same design rule applied
+  to the path that missed it. A post-test direction audit found 9 of 21 test
+  summaries saying "deeper" for the higher line, 8 of them rated 5 for
+  faithfulness by the judge; a deterministic direction check is future work.
+
 **Consequence.** Answers take about 11-19 s on a laptop, so the hosted demo shows
 pre-generated answers and free-form questions need `regista serve` locally. The
 dev set is small (38 questions, one wrong answer for the chosen model), so the

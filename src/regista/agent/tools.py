@@ -263,6 +263,13 @@ class PassingOptionsResult(BaseModel):
     notes: list[str]
 
 
+MOMENT_UNITS = {
+    "back_line_change": "defenders in the back line (a count, not metres)",
+    "press_change": "press intensity (share of opponent-carrier frames pressed within 5 yd)",
+    "line_height_shift": "metres (deepest outfield player's distance from own goal line)",
+}
+
+
 class MomentItem(BaseModel):
     type: MomentType
     team: Team
@@ -272,6 +279,7 @@ class MomentItem(BaseModel):
     severity: float
     before: float
     after: float
+    unit: str = Field(description="what before and after measure")
     evidence: list[Evidence]
 
 
@@ -339,6 +347,10 @@ class MatchData:
             return out
         start = self._resolve(from_clock, periods, default="start")
         end = self._resolve(to_clock, periods, default="end")
+        if end <= start and end[0] == 1 and _is_plain_45(from_clock):
+            # "45:00" means the second-half start, but "45:00" to "45+1:28" can only mean
+            # the end of the first half's regulation time into its stoppage time
+            start = (1, PERIOD_LENGTH_S)
         if end <= start:
             raise ToolError(f"empty time range {from_clock!r} to {to_clock!r}")
         out = []
@@ -405,6 +417,16 @@ def _in_segments(df: pd.DataFrame, segs, t_col: str = "t", end_col: str | None =
         else:
             mask |= (df["period"] == p) & (df[end_col] > a) & (df[t_col] < b)
     return mask
+
+
+def _is_plain_45(clock: str | None) -> bool:
+    if clock is None:
+        return False
+    try:
+        period, seconds = parse_clock(clock)
+    except ValueError:
+        return False
+    return period is None and seconds == PERIOD_LENGTH_S
 
 
 def _f(x) -> float | None:
@@ -835,7 +857,11 @@ class Toolbox:
             mo = mo[mo["type"] == moment_type(type)]
         if team:
             mo = mo[mo["team"] == team]
-        mo = mo[_in_segments(mo, segs, "emit_t")].sort_values(["period", "emit_t"])
+        # a moment flagged in a period's final window can be emitted up to one detector
+        # step after the last recorded frame; it belongs to the end of that period
+        last = {p: m.period_range(p)[1] for p in mo["period"].astype(int).unique()}
+        mo = mo.assign(t_in=np.minimum(mo["emit_t"], mo["period"].astype(int).map(last)))
+        mo = mo[_in_segments(mo, segs, "t_in")].sort_values(["period", "emit_t"])
         items = []
         for r in mo.itertuples():
             ev = json.loads(r.evidence)
@@ -850,6 +876,7 @@ class Toolbox:
                     severity=float(r.severity),
                     before=round(float(ev["before"]), 4),
                     after=round(float(ev["after"]), 4),
+                    unit=MOMENT_UNITS[r.type],
                     evidence=[m.evidence(int(first[0]), float(first[1]), float(r.emit_t))],
                 )
             )

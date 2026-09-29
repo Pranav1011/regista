@@ -97,15 +97,46 @@ def current_hashes() -> dict[str, str]:
     }
 
 
-def check_frozen() -> dict:
-    """The frozen configuration, or exit if anything it pins has changed since."""
-    if not FROZEN.exists():
-        sys.exit("no eval/agent/frozen.json: freeze the model and prompt on dev first")
-    frozen = json.loads(FROZEN.read_text())
+def check_frozen(path: Path = FROZEN) -> dict:
+    """The frozen configuration (or a post-test release record), or exit if anything it pins
+    has changed since."""
+    if not path.exists():
+        sys.exit(f"no {path.name}: freeze the model and prompt on dev first")
+    frozen = json.loads(path.read_text())
     changed = [k for k, v in current_hashes().items() if frozen.get(k) != v]
     if changed:
-        sys.exit(f"changed since the freeze: {', '.join(changed)}; the test split is locked")
+        sys.exit(f"changed since {path.name}: {', '.join(changed)}")
     return frozen
+
+
+V1_1_CHANGES = [
+    "moment evidence states its unit (back-line counts are defenders, not metres)",
+    "'45:00' to a first-half stoppage clock resolves to the first half's stoppage time",
+    "find_moments includes moments emitted after a period's last recorded frame",
+    "the summary fact sheet includes the tools' line-height and press comparisons",
+]
+
+
+def write_release(version: str) -> Path:
+    """A post-test release record: the v1.0 frozen model and prompt with bug fixes only.
+    frozen.json stays the record of the test run."""
+    base = json.loads(FROZEN.read_text())
+    if base["prompt_hash"] != prompt_hash():
+        sys.exit("the prompt changed; a bug-fix release keeps the v1.0 prompt")
+    record = {
+        "version": version,
+        "model": base["model"],
+        "think": base.get("think"),
+        "judge": base.get("judge"),
+        **current_hashes(),
+        "based_on": {"file": FROZEN.name, "code_hash": base["code_hash"]},
+        "changes": V1_1_CHANGES,
+        "note": "bug fixes after the test run (ADR-009); the v1.0 test numbers stand",
+        "released_at": time.strftime("%Y-%m-%d"),
+    }
+    out = HERE / f"release_{version}.json"
+    out.write_text(json.dumps(record, indent=2) + "\n")
+    return out
 
 
 MIN_FREE_GB = 5.0
@@ -1018,7 +1049,11 @@ def main() -> None:
     ap.add_argument("--rescore", action="store_true", help="re-score stored dev answers")
     ap.add_argument("--freeze", action="store_true", help="pin --model and all hashes")
     ap.add_argument("--preflight", action="store_true", help="check readiness for the test run")
+    ap.add_argument("--release", metavar="VERSION", help="write a post-test bug-fix release record")
     args = ap.parse_args()
+    if args.release:
+        print(f"wrote {write_release(args.release)}")
+        return
     if args.preflight:
         preflight()
         return

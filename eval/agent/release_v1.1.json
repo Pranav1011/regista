@@ -1,0 +1,22 @@
+{
+  "version": "v1.1",
+  "model": "qwen3.5:9b",
+  "think": false,
+  "judge": "gemma4:12b",
+  "prompt_hash": "08a94cfcf81b",
+  "code_hash": "78976836431b",
+  "question_bank_hash": "ad9c0540b7f6",
+  "scorer_hash": "cc1ecbd13ea0",
+  "based_on": {
+    "file": "frozen.json",
+    "code_hash": "51994bc9738b"
+  },
+  "changes": [
+    "moment evidence states its unit (back-line counts are defenders, not metres)",
+    "'45:00' to a first-half stoppage clock resolves to the first half's stoppage time",
+    "find_moments includes moments emitted after a period's last recorded frame",
+    "the summary fact sheet includes the tools' line-height and press comparisons"
+  ],
+  "note": "bug fixes after the test run (ADR-009); the v1.0 test numbers stand",
+  "released_at": "2026-09-29"
+}

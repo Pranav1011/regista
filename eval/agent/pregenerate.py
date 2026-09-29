@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
-from run import check_frozen  # noqa: E402
+from run import FROZEN, check_frozen  # noqa: E402
 
 from regista import io  # noqa: E402
 from regista.agent.loop import Agent, OllamaProvider  # noqa: E402
@@ -44,8 +44,12 @@ SUGGESTED = (
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--game", type=int, action="append", required=True)
+    ap.add_argument(
+        "--release", type=Path, default=FROZEN,
+        help="frozen.json (v1.0) or a post-test release record such as release_v1.1.json",
+    )  # fmt: skip
     args = ap.parse_args()
-    frozen = check_frozen()
+    frozen = check_frozen(args.release)
     provider = OllamaProvider(frozen["model"], think=frozen.get("think"))
     agent = Agent(Toolbox(io.data_dir() / "store"), provider)
     ANSWERS.mkdir(exist_ok=True)
@@ -70,6 +74,7 @@ def main() -> None:
                 json.dumps(
                     {
                         "model": frozen["model"],
+                        "agent_version": frozen.get("version", "v1.0"),
                         "generated": time.strftime("%Y-%m-%d"),
                         "items": items,
                     },

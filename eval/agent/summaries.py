@@ -77,9 +77,16 @@ def fact_sheet(toolbox: Toolbox, match: str) -> dict:
         }
     }
     facts["moments"] = [
-        {k: m[k] for k in ("type", "team", "emit_clock", "before", "after")}
+        {k: m[k] for k in ("type", "team", "emit_clock", "before", "after", "unit")}
         for m in toolbox.find_moments(match).model_dump()["moments"]
     ]
+    # the deterministic comparisons the tools return, so direction claims can be graded
+    facts["line_height_out_comparison"] = toolbox.get_team_dimensions(
+        match, "home", "out"
+    ).line_height_comparison.model_dump()
+    facts["press_intensity_comparison"] = toolbox.get_press_stats(
+        match, "home"
+    ).press_intensity_comparison.model_dump()
     for team in ("home", "away"):
         for phase in ("in", "out"):
             f = toolbox.get_formation(match, team, phase)

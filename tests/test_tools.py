@@ -153,3 +153,50 @@ def test_clock_before_a_late_recording_start_is_clamped(tmp_path):
     assert {e.period for e in first.evidence} == {1}
     with pytest.raises(ToolError, match="outside the recorded match"):
         tb.get_formation("synthetic/late", "home", "out", "30:00", "40:00")
+
+
+@pytest.fixture(scope="module")
+def long_store(tmp_path_factory):
+    """Synthetic: a first half with stoppage time (47 min), and a moment emitted 30 s after
+    the second half's last recorded frame, as the one-minute detector grid allows."""
+    import pandas as pd
+
+    root = tmp_path_factory.mktemp("long")
+    build_store(
+        make_match(MatchSpec(period_s=2820.0, fps=1.0)), *CONFIGS, "synthetic", "long", root
+    )
+    tb = Toolbox(root)
+    hi = tb._match("synthetic/long").period_range(2)[1]
+    moment = {
+        "type": "back_line_change", "team": "home", "match_id": "long", "period": 2,
+        "start_t": hi - 270.0, "emit_t": hi + 30.0, "emit_frame": 0, "severity": 1.5,
+        "evidence": json.dumps({"before": 4, "after": 3, "run_windows": [[2, hi - 270.0, hi]]}),
+    }  # fmt: skip
+    pd.DataFrame([moment]).to_parquet(root / "synthetic" / "long" / "moments.parquet")
+    return Toolbox(root)
+
+
+def test_v1_1_first_half_stoppage_range_from_45_00(long_store):
+    """v1.1 regression: '45:00' to a first-half stoppage clock was an empty range."""
+    r = long_store.get_team_dimensions("synthetic/long", "home", "in", "45:00", "45+1:28")
+    assert [(e.period, e.clock_start, e.clock_end) for e in r.evidence] == [
+        (1, "45+0:00", "45+1:28")
+    ]
+    long_store.get_formation("synthetic/long", "home", "in", "45:00", "45+1:28")  # no error
+    second = long_store.get_team_dimensions("synthetic/long", "home", "out", "45:00", None)
+    assert {e.period for e in second.evidence} == {2}  # "45:00" alone is still the second half
+
+
+def test_v1_1_moment_after_last_frame_is_found_with_units(long_store):
+    """v1.1 regression: moments emitted after the last recorded frame were omitted."""
+    found = long_store.find_moments("synthetic/long").moments
+    counts = long_store.get_match_overview("synthetic/long").moments_by_type
+    assert len(found) == sum(counts.values()) == 1
+    assert found[0].unit.startswith("defenders")
+    assert long_store.find_moments("synthetic/long", period=2).moments  # the period's end
+
+
+def test_every_moment_type_has_a_unit():
+    from regista.agent.tools import MOMENT_UNITS, MomentType
+
+    assert set(MOMENT_UNITS) == set(MomentType.__args__)
